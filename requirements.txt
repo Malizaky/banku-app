@@ -66,8 +66,7 @@ pytz==2023.3
 # JSON Web Tokens (if needed for API)
 PyJWT==2.8.0
 
-# File Upload Validation
-python-magic-bin==0.4.14
+# File Upload Validation (removed python-magic as it's not used and causes deployment issues)
 
 # Excel/CSV Processing (for data import/export)
 pandas==2.1.3
