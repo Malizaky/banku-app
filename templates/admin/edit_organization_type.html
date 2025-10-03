@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Organization Type - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-edit me-2"></i>Edit Organization Type</h2>
+                <a href="{{ url_for('admin.organization_types_management') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Management
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Organization Type Details</h5>
+                </div>
+                <div class="card-body">
+                    <form id="organizationTypeForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Name</label>
+                                    <input type="text" class="form-control" id="name" name="name" value="{{ organization_type.name }}" readonly>
+                                    <div class="form-text">Internal name cannot be changed</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="display_name" class="form-label">Display Name *</label>
+                                    <input type="text" class="form-control" id="display_name" name="display_name" value="{{ organization_type.display_name }}" required>
+                                    <div class="form-text">User-friendly name (e.g., 'Company')</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3">{{ organization_type.description }}</textarea>
+                            <div class="form-text">Brief description of this organization type</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="icon_class" class="form-label">Icon Class</label>
+                                    <input type="text" class="form-control" id="icon_class" name="icon_class" value="{{ organization_type.icon_class }}">
+                                    <div class="form-text">FontAwesome icon class (e.g., 'fas fa-building')</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="color_class" class="form-label">Color Class</label>
+                                    <select class="form-select" id="color_class" name="color_class">
+                                        <option value="primary" {% if organization_type.color_class == 'primary' %}selected{% endif %}>Primary (Blue)</option>
+                                        <option value="success" {% if organization_type.color_class == 'success' %}selected{% endif %}>Success (Green)</option>
+                                        <option value="info" {% if organization_type.color_class == 'info' %}selected{% endif %}>Info (Cyan)</option>
+                                        <option value="warning" {% if organization_type.color_class == 'warning' %}selected{% endif %}>Warning (Yellow)</option>
+                                        <option value="danger" {% if organization_type.color_class == 'danger' %}selected{% endif %}>Danger (Red)</option>
+                                        <option value="secondary" {% if organization_type.color_class == 'secondary' %}selected{% endif %}>Secondary (Gray)</option>
+                                        <option value="dark" {% if organization_type.color_class == 'dark' %}selected{% endif %}>Dark (Black)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="max_profiles_per_user" class="form-label">Max Profiles per User</label>
+                                    <input type="number" class="form-control" id="max_profiles_per_user" name="max_profiles_per_user" value="{{ organization_type.max_profiles_per_user }}" min="1" max="100">
+                                    <div class="form-text">Maximum number of organizations of this type a user can create</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Settings</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="requires_verification" name="requires_verification" {% if organization_type.requires_verification %}checked{% endif %}>
+                                        <label class="form-check-label" for="requires_verification">
+                                            Requires Admin Verification
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {% if organization_type.is_active %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_active">
+                                            Active
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('admin.organization_types_management') }}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Update Organization Type
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('organizationTypeForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Convert checkbox values
+    data.requires_verification = document.getElementById('requires_verification').checked;
+    data.is_active = document.getElementById('is_active').checked;
+    
+    try {
+        const response = await fetch('{{ url_for("admin.edit_organization_type", org_type_id=organization_type.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('Organization type updated successfully!');
+                window.location.href = '{{ url_for("admin.organization_types_management") }}';
+            } else {
+                alert('Error: ' + result.message);
+            }
+        } else {
+            // Handle non-JSON response (likely a redirect to login)
+            if (response.status === 302 || response.status === 401) {
+                alert('Session expired. Please log in again.');
+                window.location.href = '/auth/login';
+            } else {
+                const text = await response.text();
+                console.error('Unexpected response:', text);
+                alert('An unexpected error occurred. Please try again.');
+            }
+        }
+    } catch (error) {
+        console.error('Request error:', error);
+        alert('An error occurred: ' + error.message);
+    }
+});
+</script>
+{% endblock %}

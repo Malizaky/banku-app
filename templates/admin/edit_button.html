@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Dashboard Button - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-edit me-2"></i>Edit Dashboard Button</h2>
+                <a href="{{ url_for('admin.dynamic_buttons') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Buttons
+                </a>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Button Configuration</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="editButtonForm">
+                                <input type="hidden" id="button_id" name="button_id" value="{{ button.id }}">
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="button_key" class="form-label">Button Key <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="button_key" name="button_key" value="{{ button.button_key }}" required>
+                                            <div class="form-text">Unique identifier (e.g., 'add_item', 'add_need')</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="button_label" class="form-label">Button Label <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="button_label" name="button_label" value="{{ button.button_label }}" required>
+                                            <div class="form-text">Text displayed on the button</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="button_description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="button_description" name="button_description" rows="2">{{ button.button_description or '' }}</textarea>
+                                    <div class="form-text">Optional description shown below the button</div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="target_type" class="form-label">Target Type <span class="text-danger">*</span></label>
+                                            <select class="form-select" id="target_type" name="target_type" required>
+                                                <option value="">Select target type</option>
+                                                <option value="page" {% if button.target_type == 'page' %}selected{% endif %}>Page</option>
+                                                <option value="chatbot" {% if button.target_type == 'chatbot' %}selected{% endif %}>Chatbot</option>
+                                                <option value="external" {% if button.target_type == 'external' %}selected{% endif %}>External Link</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="target_value" class="form-label">Target Value <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="target_value" name="target_value" value="{{ button.target_value or '' }}" required>
+                                            <div class="form-text">Page URL, chatbot ID, or external URL</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="icon_class" class="form-label">Icon Class</label>
+                                            <input type="text" class="form-control" id="icon_class" name="icon_class" value="{{ button.icon_class or 'fas fa-plus' }}">
+                                            <div class="form-text">FontAwesome icon class (e.g., 'fas fa-plus')</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="button_color" class="form-label">Button Color</label>
+                                            <select class="form-select" id="button_color" name="button_color">
+                                                <option value="primary" {% if button.button_color == 'primary' %}selected{% endif %}>Primary (Blue)</option>
+                                                <option value="success" {% if button.button_color == 'success' %}selected{% endif %}>Success (Green)</option>
+                                                <option value="warning" {% if button.button_color == 'warning' %}selected{% endif %}>Warning (Yellow)</option>
+                                                <option value="danger" {% if button.button_color == 'danger' %}selected{% endif %}>Danger (Red)</option>
+                                                <option value="info" {% if button.button_color == 'info' %}selected{% endif %}>Info (Cyan)</option>
+                                                <option value="secondary" {% if button.button_color == 'secondary' %}selected{% endif %}>Secondary (Gray)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="order_index" class="form-label">Order Index</label>
+                                            <input type="number" class="form-control" id="order_index" name="order_index" value="{{ button.order_index or 0 }}" min="0">
+                                            <div class="form-text">Display order (lower numbers first)</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {% if button.is_active %}checked{% endif %}>
+                                                <label class="form-check-label" for="is_active">
+                                                    Active
+                                                </label>
+                                            </div>
+                                            <div class="form-text">Enable this button</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="is_visible" name="is_visible" {% if button.is_visible %}checked{% endif %}>
+                                                <label class="form-check-label" for="is_visible">
+                                                    Visible
+                                                </label>
+                                            </div>
+                                            <div class="form-text">Show this button on dashboard</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="history.back()">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Update Button
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Preview</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center">
+                                <div id="buttonPreview" class="mb-3">
+                                    <!-- Preview will be generated here -->
+                                </div>
+                                <small class="text-muted">Live preview of your button</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Button Info</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">Created:</dt>
+                                <dd class="col-sm-8">{{ button.created_at.strftime('%Y-%m-%d %H:%M') if button.created_at else 'Unknown' }}</dd>
+                                
+                                <dt class="col-sm-4">Updated:</dt>
+                                <dd class="col-sm-8">{{ button.updated_at.strftime('%Y-%m-%d %H:%M') if button.updated_at else 'Unknown' }}</dd>
+                                
+                                <dt class="col-sm-4">Status:</dt>
+                                <dd class="col-sm-8">
+                                    {% if button.is_active and button.is_visible %}
+                                        <span class="badge bg-success">Active & Visible</span>
+                                    {% elif button.is_active %}
+                                        <span class="badge bg-warning">Active (Hidden)</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('editButtonForm');
+    const preview = document.getElementById('buttonPreview');
+    
+    // Update preview when form changes
+    function updatePreview() {
+        const label = document.getElementById('button_label').value || 'Button Label';
+        const iconClass = document.getElementById('icon_class').value || 'fas fa-plus';
+        const color = document.getElementById('button_color').value || 'primary';
+        
+        preview.innerHTML = `
+            <button class="btn btn-${color} w-100">
+                <i class="${iconClass} me-2"></i>${label}
+            </button>
+        `;
+    }
+    
+    // Add event listeners
+    ['button_label', 'icon_class', 'button_color'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updatePreview);
+    });
+    
+    // Initial preview
+    updatePreview();
+    
+    // Handle form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        // Convert checkboxes to boolean
+        data.is_active = document.getElementById('is_active').checked;
+        data.is_visible = document.getElementById('is_visible').checked;
+        data.order_index = parseInt(data.order_index) || 0;
+        
+        // Resolve button id from form data or hidden input as fallback
+        const buttonId = data.button_id || document.getElementById('button_id').value;
+        // Send update request
+        fetch(`/admin/dynamic/buttons/${buttonId}/edit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Button updated successfully!');
+                window.location.href = '/admin/dynamic/buttons';
+            } else {
+                alert('Error updating button: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating button: ' + error.message);
+        });
+    });
+});
+</script>
+{% endblock %}

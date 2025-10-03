@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Create Profile Type - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-plus-circle me-2"></i>Create New Profile Type</h2>
+                <a href="{{ url_for('admin.profile_types_management') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Management
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Profile Type Details</h5>
+                </div>
+                <div class="card-body">
+                    <form id="profileTypeForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Name *</label>
+                                    <input type="text" class="form-control" id="name" name="name" required>
+                                    <div class="form-text">Internal name (lowercase, no spaces, e.g., 'professional')</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="display_name" class="form-label">Display Name *</label>
+                                    <input type="text" class="form-control" id="display_name" name="display_name" required>
+                                    <div class="form-text">User-friendly name (e.g., 'Professional/Expert')</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                            <div class="form-text">Brief description of this profile type</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="icon_class" class="form-label">Icon Class</label>
+                                    <input type="text" class="form-control" id="icon_class" name="icon_class" value="fas fa-user">
+                                    <div class="form-text">FontAwesome icon class (e.g., 'fas fa-user')</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="color_class" class="form-label">Color Class</label>
+                                    <select class="form-select" id="color_class" name="color_class">
+                                        <option value="primary" selected>Primary (Blue)</option>
+                                        <option value="secondary">Secondary (Gray)</option>
+                                        <option value="success">Success (Green)</option>
+                                        <option value="danger">Danger (Red)</option>
+                                        <option value="warning">Warning (Yellow)</option>
+                                        <option value="info">Info (Cyan)</option>
+                                        <option value="dark">Dark (Black)</option>
+                                    </select>
+                                    <div class="form-text">Bootstrap color theme</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="max_profiles_per_user" class="form-label">Max Profiles per User</label>
+                                    <input type="number" class="form-control" id="max_profiles_per_user" name="max_profiles_per_user" value="5" min="1" max="100">
+                                    <div class="form-text">Maximum number of profiles of this type per user</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="default_privacy" class="form-label">Default Privacy</label>
+                                    <select class="form-select" id="default_privacy" name="default_privacy">
+                                        <option value="public" selected>Public</option>
+                                        <option value="private">Private</option>
+                                    </select>
+                                    <div class="form-text">Default privacy setting for new profiles</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="requires_verification" name="requires_verification">
+                                    <label class="form-check-label" for="requires_verification">
+                                        Requires Admin Verification
+                                    </label>
+                                    <div class="form-text">Check if profiles of this type need admin approval</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                    <label class="form-check-label" for="is_active">
+                                        Active
+                                    </label>
+                                    <div class="form-text">Check to make this profile type available for use</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('admin.profile_types_management') }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Create Profile Type
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Preview Card -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Preview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        This is how the profile type will appear to users when creating profiles.
+                    </div>
+                    <div class="card h-100" id="previewCard" style="max-width: 300px;">
+                        <div class="card-body text-center">
+                            <i id="previewIcon" class="fas fa-user fa-3x text-primary mb-3"></i>
+                            <h5 class="card-title" id="previewTitle">Profile Type</h5>
+                            <p class="card-text text-muted" id="previewDescription">Description will appear here</p>
+                            <div class="alert alert-info alert-sm mb-0" id="previewVerification" style="display: none;">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                Requires admin verification
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted" id="previewLimit">
+                                    Limit: 5 per user
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('profileTypeForm');
+    const previewIcon = document.getElementById('previewIcon');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewDescription = document.getElementById('previewDescription');
+    const previewVerification = document.getElementById('previewVerification');
+    const previewLimit = document.getElementById('previewLimit');
+
+    // Update preview in real-time
+    function updatePreview() {
+        const displayName = document.getElementById('display_name').value || 'Profile Type';
+        const description = document.getElementById('description').value || 'Description will appear here';
+        const iconClass = document.getElementById('icon_class').value || 'fas fa-user';
+        const colorClass = document.getElementById('color_class').value || 'primary';
+        const maxProfiles = document.getElementById('max_profiles_per_user').value || '5';
+        const requiresVerification = document.getElementById('requires_verification').checked;
+
+        previewTitle.textContent = displayName;
+        previewDescription.textContent = description;
+        previewIcon.className = iconClass + ' fa-3x text-' + colorClass + ' mb-3';
+        previewLimit.textContent = 'Limit: ' + maxProfiles + ' per user';
+        previewVerification.style.display = requiresVerification ? 'block' : 'none';
+    }
+
+    // Add event listeners
+    ['display_name', 'description', 'icon_class', 'color_class', 'max_profiles_per_user'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updatePreview);
+    });
+    document.getElementById('requires_verification').addEventListener('change', updatePreview);
+
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        // Convert checkboxes to boolean
+        data.requires_verification = document.getElementById('requires_verification').checked;
+        data.is_active = document.getElementById('is_active').checked;
+
+        fetch('{{ url_for("admin.create_profile_type") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '{{ url_for("admin.profile_types_management") }}';
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while creating the profile type.');
+        });
+    });
+
+    // Initial preview update
+    updatePreview();
+});
+</script>
+{% endblock %}

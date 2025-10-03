@@ -1,0 +1,1014 @@
+{% extends "base.html" %}
+
+{% block title %}{{ bank_type.title() }} Bank - BankU{% endblock %}
+
+{% block content %}
+<style>
+/* Apple-inspired Design System */
+:root {
+    --primary-color: #007AFF;
+    --secondary-color: #5856D6;
+    --success-color: #34C759;
+    --warning-color: #FF9500;
+    --error-color: #FF3B30;
+    --text-primary: #1D1D1F;
+    --text-secondary: #86868B;
+    --text-tertiary: #C7C7CC;
+    --background-primary: #FFFFFF;
+    --background-secondary: #F2F2F7;
+    --background-tertiary: #FAFAFA;
+    --border-color: #E5E5EA;
+    --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --shadow-heavy: 0 8px 24px rgba(0, 0, 0, 0.2);
+    --radius-small: 8px;
+    --radius-medium: 12px;
+    --radius-large: 16px;
+    --radius-xl: 20px;
+}
+
+/* Reset and base styles */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--background-secondary);
+    color: var(--text-primary);
+    line-height: 1.47;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Page container */
+.bank-container {
+    min-height: 100vh;
+    background: var(--background-secondary);
+}
+
+/* Header section */
+.bank-header {
+    background: var(--background-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 2rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.bank-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+    letter-spacing: -0.02em;
+}
+
+.bank-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin: 0;
+    font-weight: 400;
+}
+
+/* Search and filters */
+.search-section {
+    background: var(--background-primary);
+    border-radius: var(--radius-large);
+    padding: 1.5rem;
+    margin: 2rem auto;
+    max-width: 1200px;
+    box-shadow: var(--shadow-light);
+    border: 1px solid var(--border-color);
+}
+
+.search-bar {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.search-input {
+    width: 100%;
+    padding: 1rem 1rem 1rem 3rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    font-size: 1rem;
+    background: var(--background-secondary);
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+    font-size: 1.1rem;
+}
+
+.filters-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.filter-select {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-small);
+    background: var(--background-primary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: end;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-small);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+    background: #0056CC;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--background-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-small);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background: var(--background-secondary);
+}
+
+/* Products grid */
+.products-grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+/* Product card */
+.product-card {
+    background: var(--background-primary);
+    border-radius: var(--radius-large);
+    overflow: hidden;
+    box-shadow: var(--shadow-light);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+}
+
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-medium);
+    border-color: var(--primary-color);
+}
+
+.product-image {
+    height: 200px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.product-image::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+}
+
+.image-icon {
+    font-size: 3rem;
+    color: white;
+    opacity: 0.9;
+    z-index: 1;
+}
+
+.product-badges {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 2;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-xl);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.badge-verified {
+    background: var(--success-color);
+    color: white;
+}
+
+.badge-draft {
+    background: var(--warning-color);
+    color: white;
+}
+
+/* NEW: Score Badges */
+.badge-score {
+    background: var(--primary-color);
+    color: white;
+}
+
+.badge-score.badge-low {
+    background: var(--text-tertiary);
+    color: var(--text-secondary);
+}
+
+.badge-score.badge-medium {
+    background: var(--warning-color);
+    color: white;
+}
+
+.badge-score.badge-high {
+    background: var(--success-color);
+    color: white;
+}
+
+.badge-score.badge-premium {
+    background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+    color: white;
+}
+
+.badge-trust {
+    background: var(--success-color);
+    color: white;
+}
+
+.badge-trust.badge-medium {
+    background: var(--warning-color);
+    color: white;
+}
+
+.badge-trust.badge-high {
+    background: var(--success-color);
+    color: white;
+}
+
+.badge-trust.badge-verified {
+    background: linear-gradient(45deg, var(--success-color), #00D4AA);
+    color: white;
+}
+
+.product-actions {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 2;
+}
+
+.product-card:hover .product-actions {
+    opacity: 1;
+}
+
+.action-btn {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+}
+
+.action-btn:hover {
+    background: white;
+    color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.product-content {
+    padding: 1.5rem;
+}
+
+.product-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.product-category {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+}
+
+.product-description {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.product-details {
+    margin-bottom: 1rem;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.detail-item i {
+    width: 1rem;
+    margin-right: 0.5rem;
+    color: var(--primary-color);
+}
+
+.product-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.tag {
+    background: var(--background-secondary);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-small);
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+}
+
+.product-footer {
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+    margin-top: auto;
+}
+
+.price-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.price-currency {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-right: 0.25rem;
+}
+
+.price-on-request {
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.875rem;
+}
+
+.quantity {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.product-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Empty state */
+.empty-state-container {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-secondary);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    color: var(--text-tertiary);
+    margin-bottom: 1rem;
+}
+
+.empty-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.empty-description {
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.product-card {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .bank-title {
+        font-size: 2rem;
+    }
+    
+    .products-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .filters-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .filter-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .product-actions {
+        opacity: 1;
+    }
+}
+
+/* Category-specific colors */
+.product-card[data-category="product"] .product-image {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.product-card[data-category="service"] .product-image {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.product-card[data-category="idea"] .product-image {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.product-card[data-category="experience"] .product-image {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+</style>
+<div class="bank-container">
+    <!-- Header -->
+    <div class="bank-header">
+        <div class="header-content">
+            <h1 class="bank-title">
+                {{ bank_type.title() }} Bank
+                    </h1>
+            <p class="bank-subtitle">Discover and explore {{ bank_type }} from our community</p>
+        </div>
+    </div>
+    
+    <!-- Search and Filters -->
+    <div class="search-section">
+                    <form method="GET" class="filter-form">
+            <div class="search-bar">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" class="search-input" id="search" name="search" 
+                                           value="{{ search }}" placeholder="Search {{ bank_type }}...">
+                                </div>
+            
+            <div class="filters-row">
+                <div class="filter-group">
+                    <label for="category" class="filter-label">Category</label>
+                    <select class="filter-select" id="category" name="category">
+                                    <option value="">All Categories</option>
+                                    {% for cat in categories %}
+                                    <option value="{{ cat }}" {{ 'selected' if cat == category else '' }}>{{ cat }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                
+                <div class="filter-group">
+                    <label for="location" class="filter-label">Location</label>
+                    <select class="filter-select" id="location" name="location">
+                                    <option value="">All Locations</option>
+                                    {% for loc in locations %}
+                                    <option value="{{ loc }}" {{ 'selected' if loc == location else '' }}>{{ loc }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                
+                            {% if bank_type == 'products' and product_categories %}
+                <div class="filter-group">
+                    <label for="product_category_id" class="filter-label">Product Type</label>
+                    <select class="filter-select" id="product_category_id" name="product_category_id">
+                                    <option value="">All Product Types</option>
+                                    {% for cat in product_categories %}
+                                    <option value="{{ cat.id }}" {{ 'selected' if cat.id|string == request.args.get('product_category_id', '') else '' }}>{{ cat.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+                
+                <div class="filter-group">
+                    <label for="min_price" class="filter-label">Min Price</label>
+                    <input type="number" class="filter-select" id="min_price" name="min_price" 
+                                       value="{{ min_price or '' }}" placeholder="0" step="0.01">
+                            </div>
+                
+                <div class="filter-group">
+                    <label for="max_price" class="filter-label">Max Price</label>
+                    <input type="number" class="filter-select" id="max_price" name="max_price" 
+                                       value="{{ max_price or '' }}" placeholder="1000" step="0.01">
+                            </div>
+                
+                <div class="filter-group">
+                    <label for="sort_by" class="filter-label">Sort by</label>
+                    <select class="filter-select" id="sort_by" name="sort_by" onchange="this.form.submit()">
+                                        <option value="created_at" {{ 'selected' if sort_by == 'created_at' else '' }}>Date</option>
+                                        <option value="price" {{ 'selected' if sort_by == 'price' else '' }}>Price</option>
+                                        <option value="rating" {{ 'selected' if sort_by == 'rating' else '' }}>Rating</option>
+                                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="sort_order" class="filter-label">Order</label>
+                    <select class="filter-select" id="sort_order" name="sort_order" onchange="this.form.submit()">
+                        <option value="desc" {{ 'selected' if sort_order == 'desc' else '' }}>Descending</option>
+                        <option value="asc" {{ 'selected' if sort_order == 'asc' else '' }}>Ascending</option>
+                                    </select>
+                </div>
+            </div>
+            
+            <div class="filter-actions">
+                <button type="submit" class="btn-primary">
+                    Search
+                </button>
+                <a href="{{ url_for('banks.bank_items', bank_type=bank_type) }}" class="btn-secondary">
+                    Clear
+                </a>
+        </div>
+        </form>
+    </div>
+    
+    <!-- Products Grid -->
+    <div class="products-grid">
+        {% if items.items %}
+        {% for item in items.items %}
+        <div class="product-card" data-category="{{ item.category }}" data-item-id="{{ item.id }}">
+            <!-- Product Image -->
+            <div class="product-image">
+                <i class="fas fa-{{ 'box' if item.category == 'product' else 'cogs' if item.category == 'service' else 'lightbulb' if item.category == 'idea' else 'star' }} image-icon"></i>
+                
+                <!-- Badges -->
+                <div class="product-badges">
+                        {% if item.is_verified %}
+                    <span class="badge badge-verified">
+                        <i class="fas fa-check-circle"></i> Verified
+                        </span>
+                        {% endif %}
+                    {% if not item.is_available %}
+                    <span class="badge badge-draft">Draft</span>
+                    {% endif %}
+                    
+                    <!-- NEW: Score Badges -->
+                    {% if item.visibility_score and item.visibility_score.visibility_percentage is defined %}
+                    <span class="badge badge-score badge-{{ item.visibility_score.visibility_level }}" 
+                          title="Visibility Score: {{ item.visibility_score.visibility_percentage|round(1) }}%">
+                        <i class="fas fa-eye"></i> {{ item.visibility_score.visibility_level.title() }}
+                    </span>
+                    {% endif %}
+                    
+                    {% if item.credibility_score and item.credibility_score.trust_level and item.credibility_score.trust_level != 'low' %}
+                    <span class="badge badge-trust badge-{{ item.credibility_score.trust_level }}" 
+                          title="Trust Level: {{ item.credibility_score.trust_level.title() }}">
+                        <i class="fas fa-shield-alt"></i> {{ item.credibility_score.trust_level.title() }}
+                    </span>
+                    {% endif %}
+                </div>
+                
+                <!-- Actions -->
+                <div class="product-actions">
+                    <button class="action-btn" data-action="favorite" data-item-id="{{ item.id }}" title="Add to Favorites">
+                        <i class="far fa-heart"></i>
+                    </button>
+                    <button class="action-btn" data-action="share" data-item-id="{{ item.id }}" title="Share">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                </div>
+            </div>
+                    
+            <!-- Product Content -->
+            <div class="product-content">
+                <h3 class="product-title">{{ item.title }}</h3>
+                <div class="product-category">{{ item.category.title() }}</div>
+                
+                <p class="product-description">{{ item.short_description[:100] }}{% if item.short_description and item.short_description|length > 100 %}...{% endif %}</p>
+                    
+                    <!-- Product Details -->
+                    {% if item.category == 'product' %}
+                <div class="product-details">
+                        {% if item.creator %}
+                    <div class="detail-item">
+                        <i class="fas fa-building"></i>
+                        <span>{{ item.creator }}</span>
+                        </div>
+                        {% endif %}
+                        {% if item.condition %}
+                    <div class="detail-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>{{ item.condition.title() }}</span>
+                        </div>
+                        {% endif %}
+                        {% if item.subcategory %}
+                    <div class="detail-item">
+                        <i class="fas fa-tag"></i>
+                        <span>{{ item.subcategory.title() }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                <!-- Tags -->
+                        {% if item.tags %}
+                <div class="product-tags">
+                    {% for tag in item.tags[:3] %}
+                    <span class="tag">{{ tag }}</span>
+                            {% endfor %}
+                    {% if item.tags|length > 3 %}
+                    <span class="tag">+{{ item.tags|length - 3 }} more</span>
+                    {% endif %}
+                </div>
+                        {% endif %}
+                    </div>
+                    
+            <!-- Product Footer -->
+            <div class="product-footer">
+                <div class="price-section">
+                            {% if item.price %}
+                    <div class="price">
+                        {% if item.currency %}<span class="price-currency">{{ item.currency }}</span>{% endif %}
+                        {{ "%.2f"|format(item.price) }}
+                    </div>
+                            {% else %}
+                    <div class="price-on-request">Price on request</div>
+                            {% endif %}
+                            {% if item.quantity %}
+                    <div class="quantity">Qty: {{ item.quantity }}</div>
+                            {% endif %}
+                        </div>
+                
+                <div class="product-meta">
+                            {% if item.location %}
+                    <div class="meta-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>{{ item.location }}</span>
+                            </div>
+                            {% endif %}
+                    <div class="meta-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>{{ item.created_at.strftime('%b %d') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state-container">
+            <div class="empty-state">
+                <i class="fas fa-search empty-icon"></i>
+                <h3 class="empty-title">No {{ bank_type }} found</h3>
+                <p class="empty-description">Try adjusting your search criteria or check back later for new items.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if items.pages > 1 %}
+    <div style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
+            <nav aria-label="Items pagination">
+                <ul class="pagination justify-content-center">
+                    {% if items.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('banks.bank_items', bank_type=bank_type, page=items.prev_num, search=search, category=category, location=location, min_price=min_price, max_price=max_price, sort_by=sort_by, sort_order=sort_order) }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in items.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != items.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('banks.bank_items', bank_type=bank_type, page=page_num, search=search, category=category, location=location, min_price=min_price, max_price=max_price, sort_by=sort_by, sort_order=sort_order) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">…</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if items.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('banks.bank_items', bank_type=bank_type, page=items.next_num, search=search, category=category, location=location, min_price=min_price, max_price=max_price, sort_by=sort_by, sort_order=sort_order) }}">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Navigation function
+function goToItem(itemId) {
+    window.location.href = '/banks/item/' + itemId;
+}
+
+// Interactive features for product cards
+function toggleFavorite(itemId) {
+    // Toggle favorite state
+    const btn = event.target.closest('.action-btn');
+    const icon = btn.querySelector('i');
+    
+    if (icon.classList.contains('far')) {
+        icon.classList.remove('far');
+        icon.classList.add('fas');
+        btn.style.color = '#e74c3c';
+        showToast('Added to favorites!', 'success');
+    } else {
+        icon.classList.remove('fas');
+        icon.classList.add('far');
+        btn.style.color = '#6c757d';
+        showToast('Removed from favorites', 'info');
+    }
+}
+
+function shareProduct(itemId) {
+    // Share product functionality
+    if (navigator.share) {
+        navigator.share({
+            title: 'Check out this product!',
+            text: 'I found this interesting product on BankU',
+            url: window.location.origin + '/banks/item/' + itemId
+        });
+    } else {
+        // Fallback: copy to clipboard
+        const url = window.location.origin + '/banks/item/' + itemId;
+        navigator.clipboard.writeText(url).then(() => {
+            showToast('Product link copied to clipboard!', 'success');
+        });
+    }
+}
+
+function showToast(message, type = 'info') {
+    // Create toast notification
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
+            ${message}
+        </div>
+    `;
+    
+    // Add toast styles
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#28a745' : '#17a2b8'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 9999;
+        animation: slideInRight 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s ease-in';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Add CSS for toast animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// Add staggered animation to product cards
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.product-card');
+    cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+    });
+    
+    // Add click handlers for product cards
+    cards.forEach(card => {
+        card.addEventListener('click', function() {
+            const itemId = this.getAttribute('data-item-id');
+            goToItem(itemId);
+        });
+    });
+    
+    // Add click handlers for action buttons
+    const actionButtons = document.querySelectorAll('.action-btn');
+    actionButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const action = this.getAttribute('data-action');
+            const itemId = this.getAttribute('data-item-id');
+            
+            if (action === 'favorite') {
+                toggleFavorite(itemId);
+            } else if (action === 'share') {
+                shareProduct(itemId);
+            }
+        });
+    });
+    
+    // Add hover effects for better interactivity
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-4px)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+});
+
+// Show filters
+function showFilters() {
+    const filterCard = document.querySelector('.filter-form').closest('.card');
+    filterCard.style.display = filterCard.style.display === 'none' ? 'block' : 'none';
+}
+
+// Show recommendations
+async function showRecommendations() {
+    try {
+        const response = await fetch('/banks/recommendations');
+        const data = await response.json();
+        
+        if (data.items && data.items.length > 0) {
+            showToast(`Found ${data.items.length} recommendations for you!`, 'info');
+        } else {
+            showToast('No recommendations available at the moment.', 'info');
+        }
+    } catch (error) {
+        console.error('Error loading recommendations:', error);
+        showToast('Failed to load recommendations', 'error');
+    }
+}
+</script>
+{% endblock %}
+

@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Create New Organization{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>Create New Organization
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Organization Type Selection -->
+                    <div id="step1" class="step">
+                        <h5 class="text-primary mb-4">Step 1: Choose Organization Type</h5>
+                        <div class="row">
+                            {% for org_type in organization_types %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100 org-type-card" data-type-id="{{ org_type.id }}" 
+                                     data-requires-verification="{{ org_type.requires_verification|lower }}">
+                                    <div class="card-body text-center">
+                                        <i class="{{ org_type.icon_class }} fa-3x text-{{ org_type.color_class }} mb-3"></i>
+                                        <h5 class="card-title">{{ org_type.display_name }}</h5>
+                                        <p class="card-text text-muted">{{ org_type.description }}</p>
+                                        {% if org_type.requires_verification %}
+                                        <div class="alert alert-info alert-sm mb-0">
+                                            <i class="fas fa-shield-alt me-1"></i>
+                                            Requires admin verification
+                                        </div>
+                                        {% endif %}
+                                        <div class="mt-2">
+                                            <small class="text-muted">
+                                                Limit: {{ org_type.max_profiles_per_user }} per user
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="button" class="btn btn-primary" id="nextStep1" disabled>
+                                Next <i class="fas fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Organization Details -->
+                    <div id="step2" class="step d-none">
+                        <h5 class="text-primary mb-4">Step 2: Organization Details</h5>
+                        
+                        <form id="organizationForm">
+                            <input type="hidden" id="organizationTypeId" name="organization_type_id">
+                            <input type="hidden" id="requiresVerification" name="requires_verification">
+                            
+                            <div class="mb-3">
+                                <label for="organizationName" class="form-label">Organization Name *</label>
+                                <input type="text" class="form-control" id="organizationName" name="name" required>
+                                <div class="form-text">Choose a clear, descriptive name for your organization</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="organizationDescription" class="form-label">Description *</label>
+                                <textarea class="form-control" id="organizationDescription" name="description" rows="4" required></textarea>
+                                <div class="form-text">Describe what your organization does and its purpose</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Privacy Setting</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="is_public" id="publicOrg" value="true" checked>
+                                    <label class="form-check-label" for="publicOrg">
+                                        <i class="fas fa-globe text-success me-1"></i>
+                                        <strong>Public</strong> - Anyone can discover and join
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="is_public" id="privateOrg" value="false">
+                                    <label class="form-check-label" for="privateOrg">
+                                        <i class="fas fa-lock text-warning me-1"></i>
+                                        <strong>Private</strong> - Invitation only
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info" id="verificationAlert" style="display: none;">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                <strong>Verification Required:</strong> This organization type requires admin verification. 
+                                Your organization will be created but will remain pending until verified by an administrator.
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-4">
+                                <button type="button" class="btn btn-outline-secondary" id="backStep2">
+                                    <i class="fas fa-arrow-left me-1"></i> Back
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-check me-1"></i> Create Organization
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Success Step -->
+                    <div id="step3" class="step d-none">
+                        <div class="text-center">
+                            <div class="mb-4">
+                                <i class="fas fa-check-circle fa-5x text-success"></i>
+                            </div>
+                            <h4 class="text-success mb-3">Organization Created Successfully!</h4>
+                            <div id="successMessage" class="alert alert-success mb-4"></div>
+                            <div class="d-flex justify-content-center gap-3">
+                                <a href="#" id="viewOrganization" class="btn btn-primary">
+                                    <i class="fas fa-eye me-1"></i> View Organization
+                                </a>
+                                <a href="{{ url_for('organizations.index') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-list me-1"></i> My Organizations
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.org-type-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.org-type-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.org-type-card.selected {
+    border-color: var(--bs-primary);
+    background-color: rgba(var(--bs-primary-rgb), 0.05);
+}
+
+.step {
+    min-height: 400px;
+}
+</style>
+
+<script>
+let selectedOrgType = null;
+
+// Organization type selection
+document.querySelectorAll('.org-type-card').forEach(card => {
+    card.addEventListener('click', function() {
+        // Remove previous selection
+        document.querySelectorAll('.org-type-card').forEach(c => c.classList.remove('selected'));
+        
+        // Add selection to clicked card
+        this.classList.add('selected');
+        
+        // Store selected type
+        selectedOrgType = {
+            id: this.dataset.typeId,
+            requiresVerification: this.dataset.requiresVerification === 'true'
+        };
+        
+        // Enable next button
+        document.getElementById('nextStep1').disabled = false;
+    });
+});
+
+// Step 1 to Step 2
+document.getElementById('nextStep1').addEventListener('click', function() {
+    if (!selectedOrgType) return;
+    
+    // Update form with selected type
+    document.getElementById('organizationTypeId').value = selectedOrgType.id;
+    document.getElementById('requiresVerification').value = selectedOrgType.requiresVerification;
+    
+    // Show/hide verification alert
+    const verificationAlert = document.getElementById('verificationAlert');
+    if (selectedOrgType.requiresVerification) {
+        verificationAlert.style.display = 'block';
+    } else {
+        verificationAlert.style.display = 'none';
+    }
+    
+    // Switch to step 2
+    document.getElementById('step1').classList.add('d-none');
+    document.getElementById('step2').classList.remove('d-none');
+});
+
+// Step 2 back to Step 1
+document.getElementById('backStep2').addEventListener('click', function() {
+    document.getElementById('step2').classList.add('d-none');
+    document.getElementById('step1').classList.remove('d-none');
+});
+
+// Form submission
+document.getElementById('organizationForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Convert boolean values
+    data.is_public = data.is_public === 'true';
+    data.organization_type_id = parseInt(data.organization_type_id);
+    
+    try {
+        const response = await fetch('{{ url_for("organizations.create_post") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Show success message
+            document.getElementById('successMessage').textContent = result.message;
+            
+            // Update view organization link
+            document.getElementById('viewOrganization').href = `/organizations/${result.slug}`;
+            
+            // Switch to step 3
+            document.getElementById('step2').classList.add('d-none');
+            document.getElementById('step3').classList.remove('d-none');
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('An error occurred: ' + error.message);
+    }
+});
+</script>
+{% endblock %}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

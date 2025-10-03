@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual env
+venv/
+.env
+
+# Flask/instance
+instance/
+*.db
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Cached files
+.cache/
+*.cache
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Node (if any frontend assets)
+node_modules/
+
+# Backups/archives
+BankU_Full_Backup_*/
+*.zip
+
+# Compiled assets
+static/build/
+
+# Secrets
+*.env
+.env.*
+
+# Bytecode
+**/__pycache__/

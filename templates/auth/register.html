@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Register - BankU{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-0 shadow-lg">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-user-plus text-primary fs-1"></i>
+                        <h2 class="h3 mb-2">Join BankU</h2>
+                        <p class="text-muted">Create your account and start connecting</p>
+                    </div>
+                    
+                    <form id="registerForm" method="POST">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-user"></i>
+                                </span>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            <div class="invalid-feedback d-block" id="username-error"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-envelope"></i>
+                                </span>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                            <div class="invalid-feedback d-block" id="email-error"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Phone Number (Optional)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-phone"></i>
+                                </span>
+                                <input type="tel" class="form-control" id="phone" name="phone">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="location" class="form-label">Location (Optional)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </span>
+                                <input type="text" class="form-control" id="location" name="location" placeholder="City, Country">
+                            </div>
+                        </div>
+                        
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="terms" required>
+                            <label class="form-check-label" for="terms">
+                                I agree to the <a href="#" class="text-decoration-none">Terms of Service</a> and <a href="#" class="text-decoration-none">Privacy Policy</a>
+                            </label>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-user-plus me-2"></i>Create Account
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="text-center mt-4">
+                        <p class="mb-0">Already have an account? 
+                            <a href="{{ url_for('auth.login') }}" class="text-decoration-none">Sign in here</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.invalid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: #dc3545;
+}
+
+.invalid-feedback.show {
+    display: block !important;
+}
+
+.is-invalid ~ .invalid-feedback {
+    display: block !important;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Real-time validation for username and email
+document.getElementById('username').addEventListener('blur', function() {
+    validateField('username', this.value);
+});
+
+document.getElementById('email').addEventListener('blur', function() {
+    validateField('email', this.value);
+});
+
+function validateField(field, value) {
+    if (!value) return;
+    
+    fetch('{{ url_for("auth.validate_field") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({field: field, value: value})
+    })
+    .then(response => response.json())
+    .then(result => {
+        const input = document.getElementById(field);
+        const errorDiv = document.getElementById(field + '-error');
+        
+        if (result.available) {
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+            errorDiv.textContent = '';
+            errorDiv.classList.remove('show');
+        } else {
+            input.classList.remove('is-valid');
+            input.classList.add('is-invalid');
+            errorDiv.textContent = result.message;
+            errorDiv.classList.add('show');
+        }
+    })
+    .catch(error => {
+        console.error('Validation error:', error);
+    });
+}
+
+document.getElementById('registerForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // Clear previous validation states
+    document.querySelectorAll('.is-invalid, .is-valid').forEach(el => {
+        el.classList.remove('is-invalid', 'is-valid');
+    });
+    document.querySelectorAll('.invalid-feedback').forEach(el => {
+        el.textContent = '';
+    });
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    try {
+        const response = await fetch('{{ url_for("auth.register") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            window.location.href = result.redirect;
+        } else {
+            // Show inline error messages
+            if (result.field === 'username') {
+                const usernameInput = document.getElementById('username');
+                const usernameError = document.getElementById('username-error');
+                usernameInput.classList.add('is-invalid');
+                usernameError.textContent = result.message;
+                usernameError.classList.add('show');
+            } else if (result.field === 'email') {
+                const emailInput = document.getElementById('email');
+                const emailError = document.getElementById('email-error');
+                emailInput.classList.add('is-invalid');
+                emailError.textContent = result.message;
+                emailError.classList.add('show');
+            } else {
+                alert(result.message);
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+    }
+});
+</script>
+{% endblock %}
+

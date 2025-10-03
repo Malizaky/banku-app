@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block title %}Create Dashboard Button - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-plus me-2"></i>Create New Dashboard Button</h2>
+                <a href="{{ url_for('admin.dynamic_buttons') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Buttons
+                </a>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Button Configuration</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="createButtonForm">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="button_key" class="form-label">Button Key <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="button_key" name="button_key" required>
+                                            <div class="form-text">Unique identifier (e.g., 'add_item', 'add_need')</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="button_label" class="form-label">Button Label <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="button_label" name="button_label" required>
+                                            <div class="form-text">Text displayed on the button</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="button_description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="button_description" name="button_description" rows="2"></textarea>
+                                    <div class="form-text">Optional description shown below the button</div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="target_type" class="form-label">Target Type <span class="text-danger">*</span></label>
+                                            <select class="form-select" id="target_type" name="target_type" required>
+                                                <option value="">Select target type</option>
+                                                <option value="page">Internal Page</option>
+                                                <option value="chatbot">Chatbot Flow</option>
+                                                <option value="external">External Link</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="target_value" class="form-label">Target Value</label>
+                                            <input type="text" class="form-control" id="target_value" name="target_value">
+                                            <div class="form-text" id="target_help">URL, chatbot ID, or external link</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="icon_class" class="form-label">Icon Class</label>
+                                            <input type="text" class="form-control" id="icon_class" name="icon_class" value="fas fa-plus">
+                                            <div class="form-text">FontAwesome icon class (e.g., 'fas fa-plus')</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="button_color" class="form-label">Button Color</label>
+                                            <select class="form-select" id="button_color" name="button_color">
+                                                <option value="primary">Primary (Blue)</option>
+                                                <option value="success">Success (Green)</option>
+                                                <option value="warning">Warning (Yellow)</option>
+                                                <option value="danger">Danger (Red)</option>
+                                                <option value="info">Info (Cyan)</option>
+                                                <option value="secondary">Secondary (Gray)</option>
+                                                <option value="dark">Dark</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="order_index" class="form-label">Order Index</label>
+                                            <input type="number" class="form-control" id="order_index" name="order_index" value="0">
+                                            <div class="form-text">Lower numbers appear first</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="form-check mt-4">
+                                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                                <label class="form-check-label" for="is_active">
+                                                    Active
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="is_visible" name="is_visible" checked>
+                                                <label class="form-check-label" for="is_visible">
+                                                    Visible
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{{ url_for('admin.dynamic_buttons') }}" class="btn btn-secondary">Cancel</a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Create Button
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Preview</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="buttonPreview" class="text-center">
+                                <div class="action-card" style="max-width: 200px; margin: 0 auto;">
+                                    <div class="action-icon" id="previewIcon" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                                        <i class="fas fa-plus"></i>
+                                    </div>
+                                    <h6 id="previewLabel" class="action-title">Button Label</h6>
+                                    <p id="previewDescription" class="action-description text-muted small">Button description</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Help</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6>Target Types:</h6>
+                            <ul class="small">
+                                <li><strong>Internal Page:</strong> Use relative URLs like '/dashboard/add-item'</li>
+                                <li><strong>Chatbot Flow:</strong> Enter the chatbot ID number</li>
+                                <li><strong>External Link:</strong> Use full URLs like 'https://example.com'</li>
+                            </ul>
+                            
+                            <h6 class="mt-3">Common Icons:</h6>
+                            <ul class="small">
+                                <li><code>fas fa-plus</code> - Add/Plus</li>
+                                <li><code>fas fa-user-plus</code> - Add User</li>
+                                <li><code>fas fa-exclamation-circle</code> - Need/Alert</li>
+                                <li><code>fas fa-robot</code> - Chatbot</li>
+                                <li><code>fas fa-file-alt</code> - Document</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('createButtonForm');
+    const previewIcon = document.getElementById('previewIcon');
+    const previewLabel = document.getElementById('previewLabel');
+    const previewDescription = document.getElementById('previewDescription');
+    const targetTypeSelect = document.getElementById('target_type');
+    const targetValueInput = document.getElementById('target_value');
+    const targetHelp = document.getElementById('target_help');
+    const iconClassInput = document.getElementById('icon_class');
+    const buttonColorSelect = document.getElementById('button_color');
+
+    // Update preview when inputs change
+    function updatePreview() {
+        const label = document.getElementById('button_label').value || 'Button Label';
+        const description = document.getElementById('button_description').value || 'Button description';
+        const iconClass = iconClassInput.value || 'fas fa-plus';
+        const color = buttonColorSelect.value;
+
+        previewLabel.textContent = label;
+        previewDescription.textContent = description;
+        
+        // Update icon
+        const iconElement = previewIcon.querySelector('i');
+        iconElement.className = iconClass;
+        
+        // Update color
+        const colorMap = {
+            'primary': 'linear-gradient(135deg, #667eea, #764ba2)',
+            'success': 'linear-gradient(135deg, #28a745, #20c997)',
+            'warning': 'linear-gradient(135deg, #ffc107, #fd7e14)',
+            'danger': 'linear-gradient(135deg, #dc3545, #e83e8c)',
+            'info': 'linear-gradient(135deg, #17a2b8, #6f42c1)',
+            'secondary': 'linear-gradient(135deg, #6c757d, #495057)',
+            'dark': 'linear-gradient(135deg, #343a40, #212529)'
+        };
+        previewIcon.style.background = colorMap[color] || colorMap['primary'];
+    }
+
+    // Update target help text
+    function updateTargetHelp() {
+        const targetType = targetTypeSelect.value;
+        switch(targetType) {
+            case 'page':
+                targetHelp.textContent = 'Internal page URL (e.g., /dashboard/add-item)';
+                break;
+            case 'chatbot':
+                targetHelp.textContent = 'Chatbot ID number (e.g., 5)';
+                break;
+            case 'external':
+                targetHelp.textContent = 'Full external URL (e.g., https://example.com)';
+                break;
+            default:
+                targetHelp.textContent = 'URL, chatbot ID, or external link';
+        }
+    }
+
+    // Add event listeners
+    document.getElementById('button_label').addEventListener('input', updatePreview);
+    document.getElementById('button_description').addEventListener('input', updatePreview);
+    iconClassInput.addEventListener('input', updatePreview);
+    buttonColorSelect.addEventListener('change', updatePreview);
+    targetTypeSelect.addEventListener('change', updateTargetHelp);
+
+    // Handle form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        // Convert checkboxes
+        data.is_active = document.getElementById('is_active').checked;
+        data.is_visible = document.getElementById('is_visible').checked;
+        
+        fetch('{{ url_for("admin.create_button") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '{{ url_for("admin.dynamic_buttons") }}';
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while creating the button.');
+        });
+    });
+
+    // Initialize preview
+    updatePreview();
+    updateTargetHelp();
+});
+</script>
+
+<style>
+.action-card {
+    padding: 1.5rem;
+    border-radius: 15px;
+    background: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.action-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+}
+
+.action-description {
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+</style>
+{% endblock %}
