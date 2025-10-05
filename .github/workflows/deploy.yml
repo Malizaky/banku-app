@@ -2,22 +2,33 @@ name: Auto Deploy to Namecheap
 on:
   push:
     branches: [production]
+  workflow_dispatch: # Allows manual trigger
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       
-      - name: Deploy to Namecheap
-        uses: appleboy/ssh-action@v0.1.5
+      - name: Deploy to Namecheap via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.0.0
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            cd /public_html/banku-app
-            git pull origin main
-            source venv/bin/activate
-            pip install -r requirements.txt
-            # Restart your app if needed
-            echo "Deployment completed successfully!"
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          server-dir: ${{ secrets.FTP_DIRECTORY }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.venv/**
+            **/venv/**
+            **/__pycache__/**
+            **/.env
+            **/logs/**
+            **/instance/**
+            **/.github/**
+            **/README.md
+            **/PROJECT_SUMMARY.md
+            **/templates.zip
