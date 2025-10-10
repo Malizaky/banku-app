@@ -27,7 +27,11 @@
                         <i class="fas fa-edit me-1"></i>Edit
                     </a>
                     {% endif %}
-                    <a href="{{ url_for('profiles.detail', profile_id=item.profile_id) }}" class="btn btn-outline-secondary">
+                    {% if item.profile.slug %}
+                        <a href="{{ url_for('profiles.detail_by_slug', slug=item.profile.slug) }}" class="btn btn-outline-secondary">
+                    {% else %}
+                        <a href="{{ url_for('profiles.detail_by_id', profile_id=item.profile_id) }}" class="btn btn-outline-secondary">
+                    {% endif %}
                         <i class="fas fa-arrow-left me-1"></i>Back to Profile
                     </a>
                 </div>
@@ -301,7 +305,11 @@
                     </div>
                     {% endif %}
                     
-                    <a href="{{ url_for('profiles.detail', profile_id=item.profile_id) }}" class="btn btn-outline-primary btn-sm">
+                    {% if item.profile.slug %}
+                        <a href="{{ url_for('profiles.detail_by_slug', slug=item.profile.slug) }}" class="btn btn-outline-primary btn-sm">
+                    {% else %}
+                        <a href="{{ url_for('profiles.detail_by_id', profile_id=item.profile_id) }}" class="btn btn-outline-primary btn-sm">
+                    {% endif %}
                         <i class="fas fa-eye me-1"></i>View Profile
                     </a>
                 </div>

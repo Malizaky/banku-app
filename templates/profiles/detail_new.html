@@ -115,7 +115,7 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="items-tab" data-bs-toggle="tab" data-bs-target="#items" type="button" role="tab">
                                 <i class="fas fa-box me-2"></i>Items
-                                <span class="badge bg-secondary ms-1">{{ items|length }}</span>
+                                <span class="badge bg-secondary ms-1">{{ items_list|length }}</span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
@@ -152,7 +152,7 @@
                         <!-- Items Tab -->
                         <div class="tab-pane fade show active" id="items" role="tabpanel">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="mb-0">Items ({{ items|length }})</h5>
+                                <h5 class="mb-0">Items ({{ items_list|length }})</h5>
                                 <a href="{{ url_for('profiles.create_item_redirect') }}" class="btn btn-primary btn-sm">
                                     <i class="fas fa-plus me-1"></i>Add Item
                                 </a>
@@ -419,13 +419,13 @@
                                     </div>
                                 </div>
                                 
-                                {% if items %}
+                                {% if items_list %}
                                 <div class="timeline-item">
                                     <div class="timeline-marker bg-success"></div>
                                     <div class="timeline-content">
                                         <h6 class="timeline-title">Items Added</h6>
-                                        <p class="timeline-text text-muted">{{ items|length }} item{{ 's' if items|length != 1 else '' }} added to profile</p>
-                                        <small class="text-muted">Latest: {{ items[0].created_at.strftime('%B %d, %Y') if items else '' }}</small>
+                                        <p class="timeline-text text-muted">{{ items_list|length }} item{{ 's' if items_list|length != 1 else '' }} added to profile</p>
+                                        <small class="text-muted">Latest: {{ items_list[0].created_at.strftime('%B %d, %Y') if items_list else '' }}</small>
                                     </div>
                                 </div>
                                 {% endif %}

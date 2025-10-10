@@ -144,6 +144,7 @@ class Profile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
+    slug = db.Column(db.String(100), unique=True, nullable=True)  # URL-friendly identifier (nullable initially)
     profile_type = db.Column(db.String(50), nullable=True)  # Keep for backward compatibility
     profile_type_id = db.Column(db.Integer, db.ForeignKey('profile_types.id'), nullable=True)  # New foreign key
     description = db.Column(db.Text)

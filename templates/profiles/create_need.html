@@ -165,7 +165,11 @@
                         </div>
                         
                         <div class="d-flex justify-content-between">
-                            <a href="{{ url_for('profiles.detail', profile_id=profile.id) }}" class="btn btn-outline-secondary">
+                            {% if profile.slug %}
+                                <a href="{{ url_for('profiles.detail_by_slug', slug=profile.slug) }}" class="btn btn-outline-secondary">
+                            {% else %}
+                                <a href="{{ url_for('profiles.detail_by_id', profile_id=profile.id) }}" class="btn btn-outline-secondary">
+                            {% endif %}
                                 <i class="fas fa-arrow-left me-1"></i>Back to Profile
                             </a>
                             <button type="submit" class="btn btn-primary">

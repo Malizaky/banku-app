@@ -208,57 +208,6 @@ def require_admin_role():
     """
     return admin_required
 
-def require_permission(resource, action):
-    """
-    Decorator factory to require specific permission
-    """
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            try:
-                if not current_user.is_authenticated:
-                    flash('Authentication required.', 'error')
-                    return redirect(url_for('auth.login'))
-                
-                if not has_permission(current_user, resource, action):
-                    # User-friendly error messages
-                    error_messages = {
-                        ('deals', 'create'): 'You need permission to create deals. Please contact customer support.',
-                        ('deals', 'read'): 'You need permission to view deals. Please contact customer support.',
-                        ('deals', 'update'): 'You need permission to update deals. Please contact customer support.',
-                        ('deals', 'delete'): 'You need permission to delete deals. Please contact customer support.',
-                        ('banks', 'create'): 'You need permission to create banks. Please contact customer support.',
-                        ('banks', 'read'): 'You need permission to view banks. Please contact customer support.',
-                        ('organizations', 'create'): 'You need permission to create organizations. Please contact customer support.',
-                        ('organizations', 'read'): 'You need permission to view organizations. Please contact customer support.',
-                        ('organizations', 'update'): 'You need permission to modify organizations. Please contact customer support.',
-                        ('organizations', 'delete'): 'You need permission to delete organizations. Please contact customer support.',
-                        ('ai_matching', 'access_dashboard'): 'You need permission to access AI Matcher. Please contact customer support.',
-                        ('profiles', 'create'): 'You need permission to create profiles. Please contact customer support.',
-                        ('profiles', 'read'): 'You need permission to view profiles. Please contact customer support.',
-                        ('profiles', 'update'): 'You need permission to modify profiles. Please contact customer support.',
-                        ('profiles', 'delete'): 'You need permission to delete profiles. Please contact customer support.',
-                        ('items', 'create'): 'You need permission to create items. Please contact customer support.',
-                        ('items', 'read'): 'You need permission to view items. Please contact customer support.',
-                        ('items', 'update'): 'You need permission to modify items. Please contact customer support.',
-                        ('items', 'delete'): 'You need permission to delete items. Please contact customer support.',
-                        ('chatbots', 'read'): 'You need permission to use chatbots. Please contact customer support.',
-                        ('admin', 'access'): 'You need admin permissions to access this area. Please contact customer support.'
-                    }
-                    
-                    error_message = error_messages.get((resource, action), f'You need permission to access this feature. Please contact customer support.')
-                    flash(error_message, 'error')
-                    # Return to previous page instead of dashboard
-                    return redirect(request.referrer or url_for('index'))
-                
-                return f(*args, **kwargs)
-            except Exception as e:
-                current_app.logger.error(f"Permission decorator error: {e}")
-                flash('An error occurred while checking permissions. Please try again.', 'error')
-                # Return to previous page instead of dashboard
-                return redirect(request.referrer or url_for('index'))
-        return decorated_function
-    return decorator
 
 def require_admin_or_connector(f=None):
     """

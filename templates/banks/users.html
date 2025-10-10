@@ -91,8 +91,14 @@
                                     
                                     <div class="mt-auto">
                                         {% if user_profiles.get(user.id) %}
-                                            <a href="{{ url_for('profiles.detail', profile_id=user_profiles[user.id]) }}" 
-                                               class="btn btn-outline-primary btn-sm">
+                                            {% set profile = user_profiles[user.id] %}
+                                            {% if profile.slug %}
+                                                <a href="{{ url_for('profiles.detail_by_slug', slug=profile.slug) }}" 
+                                                   class="btn btn-outline-primary btn-sm">
+                                            {% else %}
+                                                <a href="{{ url_for('profiles.detail_by_id', profile_id=profile.id) }}" 
+                                                   class="btn btn-outline-primary btn-sm">
+                                            {% endif %}
                                                 <i class="fas fa-eye me-1"></i>View Profile
                                             </a>
                                         {% else %}

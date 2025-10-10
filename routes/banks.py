@@ -462,7 +462,7 @@ def handle_user_bank(bank, page, per_page, search, sort_by, sort_order):
     
     users = query.paginate(page=page, per_page=per_page, error_out=False)
     
-    # Get profile IDs for each user based on privacy filter
+    # Get profile objects for each user based on privacy filter
     user_profiles = {}
     for user in users.items:
         # Get the appropriate profile based on privacy filter
@@ -474,7 +474,7 @@ def handle_user_bank(bank, page, per_page, search, sort_by, sort_order):
             profile = Profile.query.filter_by(user_id=user.id).first()
         
         if profile:
-            user_profiles[user.id] = profile.id
+            user_profiles[user.id] = profile  # Store profile object instead of just ID
     
     # Support AJAX requests
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':

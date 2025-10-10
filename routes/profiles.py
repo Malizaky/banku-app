@@ -139,9 +139,14 @@ def create():
             # Legacy string system
             profile_type_string = profile_type_value
         
+        # Generate slug for the profile
+        from utils.slug_utils import generate_profile_slug
+        slug = generate_profile_slug(form.name.data, current_user.id)
+        
         profile = Profile(
             user_id=current_user.id,
             name=form.name.data,
+            slug=slug,  # Add slug field
             profile_type=profile_type_string,  # Keep for backward compatibility
             profile_type_id=profile_type_id,   # New foreign key system
             description=form.description.data,
@@ -156,14 +161,96 @@ def create():
         db.session.commit()
         
         flash('Profile created successfully', 'success')
-        return redirect(url_for('profiles.detail', profile_id=profile.id))
+        # Redirect to slug-based URL if available, otherwise use ID
+        if profile.slug:
+            return redirect(url_for('profiles.detail_by_slug', slug=profile.slug))
+        else:
+            return redirect(url_for('profiles.detail_by_id', profile_id=profile.id))
     
     return render_template('profiles/create.html', form=form, profile_types_dict=profile_types_dict)
 
-@profiles_bp.route('/<int:profile_id>')
+@profiles_bp.route('/<slug>')
 @login_required
 @require_permission('profiles', 'read')
-def detail(profile_id):
+def detail_by_slug(slug):
+    """View profile by slug (new preferred method)"""
+    from utils.permissions import has_permission
+    
+    # Check if user has permission to view private profiles
+    can_view_private = has_permission(current_user, 'profiles', 'view_private')
+    
+    if can_view_private:
+        # Users with private access can view any profile
+        profile = Profile.query.filter_by(slug=slug).first_or_404()
+    else:
+        # Regular users: Allow viewing own profiles OR public profiles of other users
+        profile = Profile.query.filter(
+            db.and_(
+                Profile.slug == slug,
+                db.or_(
+                    Profile.user_id == current_user.id,
+                    Profile.is_public == True
+                )
+            )
+        ).first_or_404()
+    
+    # Check About tab permissions
+    can_view_about = False
+    is_owner = profile.user_id == current_user.id
+    
+    if is_owner:
+        can_view_about = has_permission(current_user, 'profiles', 'view_about_own')
+    else:
+        can_view_about = has_permission(current_user, 'profiles', 'view_about_others')
+    
+    # Check Activity tab permissions
+    can_view_activity = False
+    if is_owner:
+        can_view_activity = has_permission(current_user, 'profiles', 'view_activity_own')
+    else:
+        can_view_activity = has_permission(current_user, 'profiles', 'view_activity_others')
+    
+    # Get profile's items with pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = 12
+    items = Item.query.filter_by(profile_id=profile.id, is_available=True).order_by(Item.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Get all profile's items for needs/saved items tabs (not paginated)
+    all_items = Item.query.filter_by(profile_id=profile.id, is_available=True).order_by(Item.created_at.desc()).all()
+    
+    # Separate items and needs based on category or content_type
+    items_list = [item for item in all_items if item.category != 'need' and getattr(item, 'content_type', None) != 'need']
+    needs = [item for item in all_items if item.category == 'need' or getattr(item, 'content_type', None) == 'need']
+    
+    # Get profile's projects
+    projects = Project.query.filter_by(profile_id=profile.id).order_by(Project.created_at.desc()).all()
+    
+    # Get user's saved items
+    saved_items = Item.query.options(
+        db.joinedload(Item.item_type),
+        db.joinedload(Item.profile)
+    ).join(SavedItem).filter(
+        SavedItem.user_id == current_user.id
+    ).order_by(SavedItem.saved_at.desc()).all()
+    
+    return render_template('profiles/detail_new.html', 
+                         profile=profile, 
+                         items=items,
+                         items_list=items_list,  # For template length checks
+                         needs=needs,
+                         projects=projects,
+                         saved_items=saved_items,
+                         can_view_about=can_view_about,
+                         can_view_activity=can_view_activity,
+                         is_owner=is_owner)
+
+@profiles_bp.route('/id/<int:profile_id>')
+@login_required
+@require_permission('profiles', 'read')
+def detail_by_id(profile_id):
+    """View profile by ID (backward compatibility)"""
     from utils.permissions import has_permission
     
     # Check if user has permission to view private profiles
@@ -175,21 +262,51 @@ def detail(profile_id):
     else:
         # Regular users: Allow viewing own profiles OR public profiles of other users
         profile = Profile.query.filter(
-            (Profile.id == profile_id) & (
-                (Profile.user_id == current_user.id) |  # Own profile
-                (Profile.is_public == True)  # Public profile of others
+            db.and_(
+                Profile.id == profile_id,
+                db.or_(
+                    Profile.user_id == current_user.id,
+                    Profile.is_public == True
+                )
             )
         ).first_or_404()
     
-    # Get all profile's items
-    all_items = Item.query.options(db.joinedload(Item.item_type)).filter_by(profile_id=profile_id).order_by(Item.created_at.desc()).all()
+    # If profile has a slug, redirect to slug-based URL
+    if profile.slug:
+        return redirect(url_for('profiles.detail_by_slug', slug=profile.slug))
+    
+    # Check About tab permissions
+    can_view_about = False
+    is_owner = profile.user_id == current_user.id
+    
+    if is_owner:
+        can_view_about = has_permission(current_user, 'profiles', 'view_about_own')
+    else:
+        can_view_about = has_permission(current_user, 'profiles', 'view_about_others')
+    
+    # Check Activity tab permissions
+    can_view_activity = False
+    if is_owner:
+        can_view_activity = has_permission(current_user, 'profiles', 'view_activity_own')
+    else:
+        can_view_activity = has_permission(current_user, 'profiles', 'view_activity_others')
+    
+    # Get profile's items with pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = 12
+    items = Item.query.filter_by(profile_id=profile.id, is_available=True).order_by(Item.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Get all profile's items for needs/saved items tabs (not paginated)
+    all_items = Item.query.filter_by(profile_id=profile.id, is_available=True).order_by(Item.created_at.desc()).all()
     
     # Separate items and needs based on category or content_type
-    items = [item for item in all_items if item.category != 'need' and getattr(item, 'content_type', None) != 'need']
+    items_list = [item for item in all_items if item.category != 'need' and getattr(item, 'content_type', None) != 'need']
     needs = [item for item in all_items if item.category == 'need' or getattr(item, 'content_type', None) == 'need']
     
     # Get profile's projects
-    projects = Project.query.filter_by(profile_id=profile_id).order_by(Project.created_at.desc()).all()
+    projects = Project.query.filter_by(profile_id=profile.id).order_by(Project.created_at.desc()).all()
     
     # Get user's saved items
     saved_items = Item.query.options(
@@ -199,36 +316,32 @@ def detail(profile_id):
         SavedItem.user_id == current_user.id
     ).order_by(SavedItem.saved_at.desc()).all()
     
-    # Check About tab permissions
-    is_owner = profile.user_id == current_user.id
-    can_view_about = False
-    
-    if is_owner:
-        # Owner can always see their own About tab
-        can_view_about = True
-    else:
-        # Others need view_about_others permission
-        can_view_about = has_permission(current_user, 'profiles', 'view_about_others')
-    
-    # Check Activity tab permissions
-    can_view_activity = False
-    
-    if is_owner:
-        # Owner can always see their own Activity tab
-        can_view_activity = True
-    else:
-        # Others need view_activity_others permission
-        can_view_activity = has_permission(current_user, 'profiles', 'view_activity_others')
-    
     return render_template('profiles/detail_new.html', 
                          profile=profile, 
-                         items=items, 
-                         needs=needs, 
+                         items=items,
+                         items_list=items_list,  # For template length checks
+                         needs=needs,
                          projects=projects,
                          saved_items=saved_items,
                          can_view_about=can_view_about,
                          can_view_activity=can_view_activity,
                          is_owner=is_owner)
+
+# Keep the old route for backward compatibility (will redirect to slug-based URL)
+@profiles_bp.route('/<int:profile_id>')
+@login_required
+@require_permission('profiles', 'read')
+def detail(profile_id):
+    """Legacy route - redirects to slug-based URL for better SEO and UX"""
+    # Find the profile by ID
+    profile = Profile.query.filter_by(id=profile_id).first_or_404()
+    
+    # If profile has a slug, redirect to slug-based URL
+    if profile.slug:
+        return redirect(url_for('profiles.detail_by_slug', slug=profile.slug))
+    else:
+        # If no slug yet, use the new ID-based route
+        return redirect(url_for('profiles.detail_by_id', profile_id=profile_id))
 
 @profiles_bp.route('/<int:profile_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -257,6 +370,7 @@ def edit(profile_id):
             profile.photo = photo_filename
         
         # Update profile fields
+        old_name = profile.name
         profile.name = form.name.data
         profile.description = form.description.data
         profile.phone = form.phone.data if form.phone.data else None
@@ -264,9 +378,18 @@ def edit(profile_id):
         profile.location = form.location.data
         profile.is_public = form.is_public.data
         
+        # Regenerate slug if name changed
+        if old_name != profile.name:
+            from utils.slug_utils import generate_profile_slug
+            profile.slug = generate_profile_slug(profile.name, profile.user_id, profile.id)
+        
         db.session.commit()
         flash('Profile updated successfully', 'success')
-        return redirect(url_for('profiles.detail', profile_id=profile.id))
+        # Redirect to slug-based URL if available, otherwise use ID
+        if profile.slug:
+            return redirect(url_for('profiles.detail_by_slug', slug=profile.slug))
+        else:
+            return redirect(url_for('profiles.detail_by_id', profile_id=profile.id))
     
     return render_template('profiles/edit.html', profile=profile, form=form)
 

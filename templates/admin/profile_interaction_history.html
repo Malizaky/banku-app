@@ -15,7 +15,11 @@
                     <a href="{{ url_for('admin.interaction_analytics') }}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left me-2"></i>Back to Analytics
                     </a>
-                    <a href="{{ url_for('profiles.detail', profile_id=analytics.profile.id) }}" class="btn btn-outline-primary">
+                    {% if analytics.profile.slug %}
+                        <a href="{{ url_for('profiles.detail_by_slug', slug=analytics.profile.slug) }}" class="btn btn-outline-primary">
+                    {% else %}
+                        <a href="{{ url_for('profiles.detail_by_id', profile_id=analytics.profile.id) }}" class="btn btn-outline-primary">
+                    {% endif %}
                         <i class="fas fa-external-link-alt me-2"></i>View Profile
                     </a>
                 </div>

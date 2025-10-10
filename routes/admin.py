@@ -683,7 +683,14 @@ def get_role_permission_count(role_id):
         'subcategories': ['create', 'delete'],
         
         # Profile Management (Legacy)
-        'profile': ['view_own', 'edit_own', 'view_other', 'edit_other']
+        'profile': ['view_own', 'edit_own', 'view_other', 'edit_other'],
+        
+        # Wallet & Financial Management
+        'wallet': ['view', 'manage', 'withdraw', 'view_transactions'],
+        'wallet_admin': ['view_all', 'manage_all', 'process_withdrawals', 'view_analytics'],
+        'earnings': ['view', 'sync', 'manage'],
+        'withdrawals': ['request', 'cancel', 'view_own'],
+        'transactions': ['view_own', 'view_all']
     }
     
     total_count = sum(len(actions) for actions in resource_actions.values())
