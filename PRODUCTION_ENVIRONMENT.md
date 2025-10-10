@@ -12,8 +12,8 @@ MAIL_FROM_NAME=BankU
 
 ## 🗄️ Database Configuration (MariaDB)
 ```bash
-DATABASE_URL=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU
-SQLALCHEMY_DATABASE_URI=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU
+DATABASE_URL=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU?charset=utf8mb4
+SQLALCHEMY_DATABASE_URI=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU?charset=utf8mb4
 ```
 
 ## 🔐 Security Configuration
@@ -35,8 +35,8 @@ HOST=0.0.0.0
 ### Required Variables
 ```bash
 # Database
-DATABASE_URL=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU
-SQLALCHEMY_DATABASE_URI=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU
+DATABASE_URL=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU?charset=utf8mb4
+SQLALCHEMY_DATABASE_URI=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU?charset=utf8mb4
 
 # Email
 MAIL_SERVER=mail.allnd.me
@@ -77,7 +77,7 @@ SQLALCHEMY_ENGINE_OPTIONS={"pool_size": 10, "pool_recycle": 3600, "pool_pre_ping
 ### For Railway/Heroku
 Set these environment variables in your hosting platform dashboard:
 ```bash
-DATABASE_URL=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU
+DATABASE_URL=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU?charset=utf8mb4
 MAIL_SERVER=mail.allnd.me
 MAIL_PORT=587
 MAIL_USE_TLS=true
@@ -92,8 +92,8 @@ PORT=8000
 Create a `.env` file on your server:
 ```bash
 # Database
-DATABASE_URL=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU
-SQLALCHEMY_DATABASE_URI=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU
+DATABASE_URL=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU?charset=utf8mb4
+SQLALCHEMY_DATABASE_URI=mysql://aioaczgd_UBankU:@@@Zenon@@@010@@@@@localhost:3306/aioaczgd_BankU?charset=utf8mb4
 
 # Email
 MAIL_SERVER=mail.allnd.me
