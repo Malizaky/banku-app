@@ -46,22 +46,36 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="icon_class" class="form-label">Icon Class</label>
-                                    <input type="text" class="form-control" id="icon_class" name="icon_class" value="fas fa-building">
-                                    <div class="form-text">FontAwesome icon class (e.g., 'fas fa-building')</div>
+                                    <div class="row">
+                                        <div class="col-8">
+                                            <input type="text" class="form-control" id="icon_class" name="icon_class" 
+                                                   value="fas fa-building" placeholder="e.g., fas fa-building, fab fa-github">
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="icon-preview text-center p-2 border rounded" style="min-height: 38px; display: flex; align-items: center; justify-content: center;">
+                                                <i id="iconPreview" class="fas fa-building fs-4" style="color: #007bff;"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-text">
+                                        Type any FontAwesome icon code (e.g., <code>fas fa-building</code>, <code>fab fa-github</code>)
+                                        <br><small class="text-muted">
+                                            <strong>Common prefixes:</strong> <code>fas</code> (solid), <code>far</code> (regular), <code>fab</code> (brands)
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="color_class" class="form-label">Color Class</label>
-                                    <select class="form-select" id="color_class" name="color_class">
-                                        <option value="primary">Primary (Blue)</option>
-                                        <option value="success">Success (Green)</option>
-                                        <option value="info">Info (Cyan)</option>
-                                        <option value="warning">Warning (Yellow)</option>
-                                        <option value="danger">Danger (Red)</option>
-                                        <option value="secondary">Secondary (Gray)</option>
-                                        <option value="dark">Dark (Black)</option>
-                                    </select>
+                                    <label for="color_class" class="form-label">Color</label>
+                                    <div class="input-group">
+                                        <input type="color" class="form-control form-control-color" id="color_picker" value="#2988a8">
+                                        <input type="text" class="form-control" id="color_class" name="color_class" value="#2988a8" placeholder="#2988a8">
+                                    </div>
+                                    <div class="form-text">
+                                        Choose a color for this organization type
+                                        <br><small class="text-muted">Use hex color values (e.g., #2988a8, #007bff, #28a745)</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -109,6 +123,53 @@
 </div>
 
 <script>
+// Icon preview functionality
+document.getElementById('icon_class').addEventListener('input', function() {
+    const iconClass = this.value.trim();
+    const preview = document.getElementById('iconPreview');
+    
+    if (iconClass) {
+        preview.className = iconClass + ' fs-4';
+    } else {
+        preview.className = 'fas fa-building fs-4';
+    }
+});
+
+// Color picker functionality
+document.getElementById('color_picker').addEventListener('input', function() {
+    const color = this.value;
+    const colorText = document.getElementById('color_class');
+    const preview = document.getElementById('iconPreview');
+    
+    // Update icon preview color
+    preview.style.color = color;
+    
+    // Update text input with hex color
+    colorText.value = color;
+});
+
+// Allow manual hex color input
+document.getElementById('color_class').addEventListener('input', function() {
+    const color = this.value;
+    const colorPicker = document.getElementById('color_picker');
+    const preview = document.getElementById('iconPreview');
+    
+    // Validate hex color format
+    if (/^#[0-9A-F]{6}$/i.test(color)) {
+        colorPicker.value = color;
+        preview.style.color = color;
+    }
+});
+
+// Initialize color picker with default color
+document.addEventListener('DOMContentLoaded', function() {
+    const defaultColor = '#2988a8';
+    document.getElementById('color_picker').value = defaultColor;
+    document.getElementById('color_class').value = defaultColor;
+    document.getElementById('iconPreview').style.color = defaultColor;
+});
+
+// Form submission
 document.getElementById('organizationTypeForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     

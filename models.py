@@ -148,6 +148,7 @@ class Profile(db.Model):
     profile_type_id = db.Column(db.Integer, db.ForeignKey('profile_types.id'), nullable=True)  # New foreign key
     description = db.Column(db.Text)
     website = db.Column(db.String(200))
+    phone = db.Column(db.String(50), nullable=True)  # Phone number with country code
     location = db.Column(db.String(100))
     photo = db.Column(db.String(200))  # Profile photo (replaces logo)
     is_active = db.Column(db.Boolean, default=True)
@@ -179,8 +180,9 @@ class Item(db.Model):
     
     # Basic Information
     title = db.Column(db.String(200), nullable=False)
-    category = db.Column(db.String(50), nullable=False)  # products, services, experiences, opportunities, events, informations, observations, hidden_gems, funders
-    subcategory = db.Column(db.String(50), nullable=False)  # physical, digital, knowledge, rights_licenses, ideas, plans_strategies, imagination_innovations, etc.
+    item_type_id = db.Column(db.Integer, db.ForeignKey('item_types.id'), nullable=False)  # Core classification (idea, product, service, need)
+    category = db.Column(db.String(50), nullable=False)  # Search/filter enhancement (Science & Research, Music, Technology, etc.)
+    subcategory = db.Column(db.String(50), nullable=False)  # Further classification (Physics, Mobile Apps, Consulting, etc.)
     
     # New hierarchical category system for products
     product_category_id = db.Column(db.Integer, db.ForeignKey('product_category.id'), nullable=True)
@@ -360,6 +362,7 @@ class Item(db.Model):
     creator_name = db.Column(db.String(200))  # Cached name for performance
     
     # Relationships
+    item_type = db.relationship('ItemType', backref='items', lazy=True)
     reviews = db.relationship('Review', backref='item', lazy=True, cascade='all, delete-orphan')
     deal_items = db.relationship('DealItem', backref='item', lazy=True)
 
@@ -631,6 +634,7 @@ class Notification(db.Model):
 class Bank(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
+    slug = db.Column(db.String(100), unique=True, nullable=True)  # URL-friendly name (optional)
     description = db.Column(db.Text)
     bank_type = db.Column(db.String(50), nullable=False)  # items, organizations, users
     
@@ -638,6 +642,7 @@ class Bank(db.Model):
     item_type_id = db.Column(db.Integer, db.ForeignKey('item_types.id'), nullable=True)  # For items banks
     organization_type_id = db.Column(db.Integer, db.ForeignKey('organization_types.id'), nullable=True)  # For organization banks
     user_filter = db.Column(db.String(50), nullable=True)  # 'personal', 'public', 'all' for user banks
+    privacy_filter = db.Column(db.String(20), default='all', nullable=False)  # 'public', 'private', 'all' for organizations and profiles
     
     # Legacy fields (for backward compatibility)
     subcategory = db.Column(db.String(50))  # Deprecated - use item_type_id instead
@@ -1368,6 +1373,19 @@ class Organization(db.Model):
     current_owner = db.Column(db.Integer, db.ForeignKey('user.id'))  # can be app (id=0) if all users leave
     admin_notes = db.Column(db.Text)  # admin notes for verification/management
     
+    # Contact Information
+    website = db.Column(db.String(500), nullable=True)  # Organization website URL
+    phone = db.Column(db.String(50), nullable=True)  # Phone number with country code
+    location = db.Column(db.String(200), nullable=True)  # Physical location/address
+    
+    # Social Media Links
+    linkedin_url = db.Column(db.String(500), nullable=True)  # LinkedIn profile URL
+    youtube_url = db.Column(db.String(500), nullable=True)  # YouTube channel URL
+    facebook_url = db.Column(db.String(500), nullable=True)  # Facebook page URL
+    instagram_url = db.Column(db.String(500), nullable=True)  # Instagram profile URL
+    tiktok_url = db.Column(db.String(500), nullable=True)  # TikTok profile URL
+    x_url = db.Column(db.String(500), nullable=True)  # X (Twitter) profile URL
+    
     # Statistics
     member_count = db.Column(db.Integer, default=1)  # cached count
     content_count = db.Column(db.Integer, default=0)  # cached count of items/needs
@@ -1706,5 +1724,153 @@ class ContentModeration(db.Model):
     # Relationships
     item = db.relationship('Item', backref='moderation_reports')
     reviewer = db.relationship('User', foreign_keys=[reviewed_by], backref='moderation_reviews')
+
+class LocationCache(db.Model):
+    """Cache for location geocoding results to avoid repeated API calls"""
+    __tablename__ = 'location_cache'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    location_string = db.Column(db.String(500), unique=True, nullable=False, index=True)
+    city = db.Column(db.String(100))
+    country = db.Column(db.String(100))
+    formatted_location = db.Column(db.String(200))  # e.g., "Dubai, UAE"
+    coordinates_lat = db.Column(db.Float)
+    coordinates_lng = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_used = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<LocationCache {self.location_string[:50]} -> {self.formatted_location}>'
+
+class SavedItem(db.Model):
+    """Track items saved by users"""
+    __tablename__ = 'saved_items'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False)
+    saved_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref='saved_items')
+    item = db.relationship('Item', backref='saved_by_users')
+    
+    # Unique constraint to prevent duplicate saves
+    __table_args__ = (db.UniqueConstraint('user_id', 'item_id'),)
+    
+    def __repr__(self):
+        return f'<SavedItem user_id={self.user_id} item_id={self.item_id}>'
+
+
+class Wallet(db.Model):
+    """User wallet for managing earnings and transactions"""
+    __tablename__ = 'wallets'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    balance = db.Column(db.Float, default=0.0, nullable=False)
+    currency = db.Column(db.String(3), default='USD', nullable=False)
+    
+    # Wallet settings
+    is_active = db.Column(db.Boolean, default=True)
+    auto_withdraw_enabled = db.Column(db.Boolean, default=False)
+    withdrawal_threshold = db.Column(db.Float, default=100.0)  # Auto-withdraw when balance reaches this amount
+    
+    # Payment information
+    payment_method = db.Column(db.String(50))  # bank_transfer, paypal, stripe, crypto
+    payment_details = db.Column(db.JSON)  # Encrypted payment information
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_withdrawal_at = db.Column(db.DateTime)
+    
+    # Relationships
+    user = db.relationship('User', backref='wallet')
+    transactions = db.relationship('WalletTransaction', backref='wallet', lazy=True, cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Wallet user_id={self.user_id} balance={self.balance}>'
+
+
+class WalletTransaction(db.Model):
+    """Wallet transaction history"""
+    __tablename__ = 'wallet_transactions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    wallet_id = db.Column(db.Integer, db.ForeignKey('wallets.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Denormalized for easier querying
+    
+    # Transaction details
+    transaction_type = db.Column(db.String(50), nullable=False)  # deposit, withdrawal, transfer, fee, refund
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(3), default='USD', nullable=False)
+    balance_before = db.Column(db.Float, nullable=False)
+    balance_after = db.Column(db.Float, nullable=False)
+    
+    # Transaction metadata
+    description = db.Column(db.Text)
+    reference_id = db.Column(db.String(100))  # External reference (deal_id, earning_id, etc.)
+    reference_type = db.Column(db.String(50))  # deal, earning, withdrawal, deposit, fee
+    
+    # Status and processing
+    status = db.Column(db.String(50), default='pending')  # pending, completed, failed, cancelled
+    processing_fee = db.Column(db.Float, default=0.0)
+    
+    # External payment info
+    external_transaction_id = db.Column(db.String(200))  # Payment processor transaction ID
+    payment_method = db.Column(db.String(50))
+    payment_details = db.Column(db.JSON)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    processed_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    
+    # Relationships
+    user = db.relationship('User', backref='wallet_transactions')
+    
+    def __repr__(self):
+        return f'<WalletTransaction {self.transaction_type} {self.amount} {self.currency}>'
+
+
+class WithdrawalRequest(db.Model):
+    """User withdrawal requests"""
+    __tablename__ = 'withdrawal_requests'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    wallet_id = db.Column(db.Integer, db.ForeignKey('wallets.id'), nullable=False)
+    
+    # Withdrawal details
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(3), default='USD', nullable=False)
+    requested_balance = db.Column(db.Float, nullable=False)  # Balance when request was made
+    
+    # Payment information
+    payment_method = db.Column(db.String(50), nullable=False)
+    payment_details = db.Column(db.JSON, nullable=False)  # Encrypted payment information
+    
+    # Status and processing
+    status = db.Column(db.String(50), default='pending')  # pending, approved, processing, completed, rejected, cancelled
+    admin_notes = db.Column(db.Text)
+    processing_fee = db.Column(db.Float, default=0.0)
+    
+    # External processing
+    external_transaction_id = db.Column(db.String(200))  # Payment processor transaction ID
+    processed_by_admin_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    processed_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='withdrawal_requests')
+    wallet = db.relationship('Wallet', backref='withdrawal_requests')
+    processed_by_admin = db.relationship('User', foreign_keys=[processed_by_admin_id])
+    
+    def __repr__(self):
+        return f'<WithdrawalRequest user_id={self.user_id} amount={self.amount} status={self.status}>'
 
 

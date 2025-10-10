@@ -18,6 +18,7 @@
                     </div>
                     
                     <div class="mb-4">
+                        <span class="badge me-2" style="background-color: {{ bank.color if bank else '#17a2b8' }};">{{ item.item_type.name.title() if item.item_type else 'Unknown' }}</span>
                         <span class="badge bg-secondary me-2">{{ item.category.title() }}</span>
                         {% if item.subcategory %}
                         <span class="badge bg-light text-dark me-2">{{ item.subcategory.title() }}</span>
@@ -34,6 +35,26 @@
                         <p class="lead">{{ item.detailed_description }}</p>
                     </div>
                     
+                    <!-- Images Section -->
+                    {% if item.images_media %}
+                    <div class="mb-4">
+                        <h5>Images</h5>
+                        <div class="row">
+                            {% for image in item.images_media %}
+                                {% if image and image.strip() and not image in ['folo', 'momo', 'iphone'] %}
+                                <div class="col-md-3 mb-2">
+                                    <img src="{{ url_for('static', filename='uploads/' + image) }}" 
+                                         alt="{{ item.title }}" 
+                                         class="img-fluid rounded shadow-sm"
+                                         style="height: 150px; object-fit: cover; cursor: pointer;"
+                                         onclick="openImageModal('{{ url_for('static', filename='uploads/' + image) }}', '{{ item.title }}')">
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                     {% if item.price %}
                     <div class="mb-4">
                         <h5>Price</h5>
@@ -44,7 +65,13 @@
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <h6 class="text-muted">Location</h6>
-                            <p><i class="fas fa-map-marker-alt me-1"></i>{{ item.location or 'Online' }}</p>
+                            {% if item.location %}
+                                <p><i class="fas fa-map-marker-alt me-1"></i>
+                                    {{ item.location|format_location_cached }}
+                                </p>
+                            {% else %}
+                                <p><i class="fas fa-map-marker-alt me-1"></i>Online</p>
+                            {% endif %}
                         </div>
                         <div class="col-md-6">
                             <h6 class="text-muted">Created</h6>
@@ -65,6 +92,66 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Rich Data from Chatbot (if available) -->
+            {% if item.type_data %}
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-comments me-2"></i>Additional Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <script>
+                        // Parse the type_data JSON
+                        try {
+                            var richData = JSON.parse('{{ item.type_data|e }}');
+                            var displayFields = richData.display_fields || {};
+                            
+                            // Display each field
+                            for (var key in displayFields) {
+                                var value = displayFields[key];
+                                if (value && typeof value === 'string' && value.trim()) {
+                                    document.write(`
+                                        <div class="mb-3">
+                                            <h6 class="text-muted">${key}</h6>
+                                            <p>${value}</p>
+                                        </div>
+                                    `);
+                                } else if (value && typeof value === 'object') {
+                                    // Handle complex objects (like images, categories, etc.)
+                                    if (value.files && Array.isArray(value.files)) {
+                                        document.write(`
+                                            <div class="mb-3">
+                                                <h6 class="text-muted">${key}</h6>
+                                                <p>${value.files.length} file(s) uploaded</p>
+                                            </div>
+                                        `);
+                                    } else if (value.category) {
+                                        document.write(`
+                                            <div class="mb-3">
+                                                <h6 class="text-muted">${key}</h6>
+                                                <p>Category: ${value.category}${value.subcategory ? ', Subcategory: ' + value.subcategory : ''}</p>
+                                            </div>
+                                        `);
+                                    } else {
+                                        document.write(`
+                                            <div class="mb-3">
+                                                <h6 class="text-muted">${key}</h6>
+                                                <p>${JSON.stringify(value)}</p>
+                                            </div>
+                                        `);
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            // Fallback for invalid JSON
+                            document.write('<p class="text-muted">Additional information is available but could not be parsed.</p>');
+                        }
+                    </script>
+                </div>
+            </div>
+            {% endif %}
             
             <!-- Reviews Section -->
             <div class="card border-0 shadow-sm mt-4">
@@ -167,6 +254,47 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openImageModal(imageSrc, imageTitle) {
+    // Create modal HTML
+    const modalHtml = `
+        <div class="modal fade" id="imageModal" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">${imageTitle}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <img src="${imageSrc}" class="img-fluid" alt="${imageTitle}">
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('imageModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+    modal.show();
+    
+    // Remove modal from DOM when hidden
+    document.getElementById('imageModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+</script>
 {% endblock %}
 
 

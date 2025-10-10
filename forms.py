@@ -9,6 +9,7 @@ class ProfileForm(FlaskForm):
                               choices=[],  # Will be populated dynamically
                               validators=[DataRequired()])
     description = TextAreaField('Description', validators=[Optional(), Length(max=500)])
+    phone = StringField('Phone Number', validators=[Optional(), Length(max=50)])
     location = StringField('Location', validators=[Optional(), Length(max=100)])
     website = StringField('Website', validators=[Optional(), URL(), Length(max=200)])
     photo = FileField('Profile Photo', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Only image files are allowed!')])

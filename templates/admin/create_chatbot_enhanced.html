@@ -1554,6 +1554,90 @@ function updateStepNumbers() {
     });
 }
 
+function showValidationError(message) {
+    // Create toast notification
+    const toast = document.createElement('div');
+    toast.className = 'validation-toast';
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
+        </div>
+    `;
+    
+    // Add toast styles
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #dc3545;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 9999;
+        animation: slideInRight 0.3s ease-out;
+        max-width: 400px;
+        font-size: 14px;
+        line-height: 1.4;
+    `;
+    
+    // Add CSS for animation if not already added
+    if (!document.getElementById('toast-animations')) {
+        const style = document.createElement('style');
+        style.id = 'toast-animations';
+        style.textContent = `
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOutRight {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(toast);
+    
+    // Remove after 5 seconds
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s ease-in';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+function clearValidationErrors() {
+    // Clear all validation error styling
+    document.querySelectorAll('.branching-validation-error').forEach(el => el.remove());
+    document.querySelectorAll('[style*="border: 3px solid #dc3545"]').forEach(el => {
+        el.style.border = '';
+        el.style.borderRadius = '';
+        el.style.backgroundColor = '';
+    });
+    document.querySelectorAll('[style*="border: 2px solid #dc3545"]').forEach(el => {
+        el.style.border = '';
+        el.style.borderRadius = '';
+        el.style.backgroundColor = '';
+        el.style.padding = '';
+        el.style.margin = '';
+    });
+}
+
 function getQuestionTypeDisplayName(type) {
     const typeMap = {
         'text': 'Text Input',
@@ -2281,6 +2365,38 @@ function populateRuleTargets(questionItem) {
         } else {
             console.log(`🔍 No previous value to restore for rule ${ruleIndex + 1}`);
         }
+        
+        // Add event listener to clear validation errors when target is selected
+        targetSelect.addEventListener('change', function() {
+            if (this.value) {
+                // Clear validation errors for this rule
+                rule.style.border = '';
+                rule.style.borderRadius = '';
+                rule.style.backgroundColor = '';
+                rule.style.padding = '';
+                rule.style.margin = '';
+                
+                // Clear the question-level error if all rules are fixed
+                const questionElement = rule.closest('.question-item');
+                const allRules = questionElement.querySelectorAll('.branching-rule');
+                const hasEmptyTargets = Array.from(allRules).some(r => {
+                    const action = r.querySelector('.rule-action').value;
+                    const target = r.querySelector('.rule-target').value;
+                    return (action === 'show_question' || action === 'hide_question') && !target;
+                });
+                
+                if (!hasEmptyTargets) {
+                    // All rules are fixed, clear question-level error
+                    questionElement.style.border = '';
+                    questionElement.style.borderRadius = '';
+                    questionElement.style.backgroundColor = '';
+                    const errorDiv = questionElement.querySelector('.branching-validation-error');
+                    if (errorDiv) {
+                        errorDiv.remove();
+                    }
+                }
+            }
+        });
     });
 }
 
@@ -2422,6 +2538,9 @@ function loadExistingFlowData() {
 
 function createChatbot() {
     console.log('🚀 Creating Enhanced Chatbot...');
+    
+    // Clear any existing validation errors
+    clearValidationErrors();
     
     const name = document.getElementById('chatbotName').value.trim();
     const description = document.getElementById('chatbotDescription').value.trim();
@@ -2588,14 +2707,73 @@ function createChatbot() {
                 }
 
                 // If branching enabled but at least one rule lacks a target, block save
-                const hasEmptyTarget = Array.from(questionElement.querySelectorAll('.branching-rule'))
-                    .some(ruleEl => {
+                const emptyTargetRules = Array.from(questionElement.querySelectorAll('.branching-rule'))
+                    .filter(ruleEl => {
                         const a = ruleEl.querySelector('.rule-action').value;
                         const t = ruleEl.querySelector('.rule-target').value;
                         return (a === 'show_question' || a === 'hide_question') && !t;
                     });
-                if (hasEmptyTarget) {
-                    throw new Error('One or more branching rules have empty target selections. Please set targets or remove the rules.');
+                
+                if (emptyTargetRules.length > 0) {
+                    // Highlight the problematic question
+                    questionElement.style.border = '3px solid #dc3545';
+                    questionElement.style.borderRadius = '8px';
+                    questionElement.style.backgroundColor = '#fff5f5';
+                    
+                    // Add error message to the question
+                    let errorDiv = questionElement.querySelector('.branching-validation-error');
+                    if (!errorDiv) {
+                        errorDiv = document.createElement('div');
+                        errorDiv.className = 'branching-validation-error alert alert-danger mt-2';
+                        errorDiv.style.marginTop = '10px';
+                        errorDiv.style.padding = '10px';
+                        errorDiv.style.borderRadius = '5px';
+                        errorDiv.style.fontSize = '0.9em';
+                        
+                        // Find the branching section and insert error after it
+                        const branchingSection = questionElement.querySelector('.branching-section');
+                        if (branchingSection) {
+                            branchingSection.appendChild(errorDiv);
+                        } else {
+                            questionElement.appendChild(errorDiv);
+                        }
+                    }
+                    
+                    errorDiv.innerHTML = `
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Branching Rule Error:</strong> ${emptyTargetRules.length} rule(s) have empty target selections. 
+                        Please select target questions or remove the rules.
+                        <br><small class="text-muted">Click on the branching rules below to fix them.</small>
+                    `;
+                    
+                    // Highlight the problematic rules
+                    emptyTargetRules.forEach(ruleEl => {
+                        ruleEl.style.border = '2px solid #dc3545';
+                        ruleEl.style.borderRadius = '5px';
+                        ruleEl.style.backgroundColor = '#fff5f5';
+                        ruleEl.style.padding = '5px';
+                        ruleEl.style.margin = '5px 0';
+                        
+                        // Add click handler to focus on the target dropdown
+                        ruleEl.addEventListener('click', function() {
+                            const targetSelect = ruleEl.querySelector('.rule-target');
+                            if (targetSelect) {
+                                targetSelect.focus();
+                                targetSelect.style.border = '2px solid #007bff';
+                            }
+                        });
+                    });
+                    
+                    // Scroll to the problematic question
+                    questionElement.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                    
+                    // Show a toast notification
+                    showValidationError(`Question "${questionData.question_text}" has incomplete branching rules. Please fix them before saving.`);
+                    
+                    throw new Error(`Branching rules error in question: ${questionData.question_text}`);
                 }
             }
             

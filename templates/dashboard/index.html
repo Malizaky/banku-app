@@ -92,14 +92,26 @@
                 <div class="stat-card-inline">
                 <div class="d-flex align-items-center">
                         <div class="stat-icon-compact bg-gradient-info text-white me-2">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <div>
+                            <div class="stat-number-compact">${{ "%.2f"|format(stats.wallet_balance) }}</div>
+                            <div class="stat-label-compact">Wallet Balance</div>
+                        </div>
+            </div>
+        </div>
+        
+                <div class="stat-card-inline">
+                <div class="d-flex align-items-center">
+                        <div class="stat-icon-compact bg-gradient-success text-white me-2">
                         <i class="fas fa-dollar-sign"></i>
                     </div>
                     <div>
                             <div class="stat-number-compact">${{ "%.2f"|format(stats.total_earnings) }}</div>
                             <div class="stat-label-compact">Total Earnings</div>
                         </div>
-                    </div>
-                </div>
+            </div>
+        </div>
             </div>
         </div>
     </div>
@@ -149,6 +161,14 @@
                         </div>
                         <h5 class="action-title-square">New Organization</h5>
                         <p class="action-description-square">Create a company, team, or project organization</p>
+        </div>
+        
+                    <div class="action-card-square" data-url="{{ url_for('wallet.index') }}" onclick="navigateToUrl(this)">
+                        <div class="action-icon-square">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <h5 class="action-title-square">My Wallet</h5>
+                        <p class="action-description-square">Manage earnings and withdraw funds</p>
         </div>
                     {% endif %}
             </div>

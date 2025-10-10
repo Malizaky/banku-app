@@ -30,6 +30,7 @@ class AdvancedDataCollector:
         self.max_requests_per_minute = 30  # Default rate limit
         self._scheduler_running = False  # Track scheduler state
         self._scheduler_thread = None  # Store scheduler thread reference
+        self._cleanup_registered = False  # Track if cleanup is registered
         
     def create_webdriver(self, headless=True):
         """Create a new webdriver instance"""
@@ -539,5 +540,53 @@ class AdvancedDataCollector:
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
-# Global instance
+    def cleanup_resources(self):
+        """Clean up resources to prevent memory leaks"""
+        try:
+            logger.info("Starting resource cleanup...")
+            
+            # Stop all scheduled tasks
+            if self._scheduler_running:
+                self.stop_scheduled_collectors()
+            
+            # Close all webdriver instances
+            for driver_id, driver in self.drivers.items():
+                try:
+                    driver.quit()
+                    logger.info(f"Closed webdriver {driver_id}")
+                except Exception as e:
+                    logger.warning(f"Error closing webdriver {driver_id}: {e}")
+            
+            self.drivers.clear()
+            
+            # Clear running collectors
+            self.running_collectors.clear()
+            
+            # Clear rate limits
+            self.rate_limits.clear()
+            
+            # Close database connections if any
+            try:
+                if hasattr(self, 'db_session'):
+                    self.db_session.close()
+            except Exception as e:
+                logger.warning(f"Error closing database session: {e}")
+            
+            logger.info("Resource cleanup completed successfully")
+            
+        except Exception as e:
+            logger.error(f"Error during resource cleanup: {e}")
+    
+    def register_cleanup(self):
+        """Register cleanup function for graceful shutdown"""
+        if not self._cleanup_registered:
+            import atexit
+            atexit.register(self.cleanup_resources)
+            self._cleanup_registered = True
+            logger.info("Cleanup function registered")
+
+# Global instance (RE-ENABLED FOR TESTING)
 advanced_collector = AdvancedDataCollector()
+
+# Register cleanup on import (RE-ENABLED FOR TESTING)
+advanced_collector.register_cleanup()

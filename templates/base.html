@@ -35,7 +35,8 @@
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="alternate icon" href="{{ url_for('static', filename='favicon.svg') }}">
     
     {% block extra_css %}{% endblock %}
 </head>
@@ -79,7 +80,7 @@
                         <!-- Banks Menu -->
                         {% set ns = namespace(has_banks_read=false) %}
                         {% for role in current_user.roles %}
-                            {% if role.permissions and 'banks' in role.permissions and 'read' in role.permissions['banks'] %}
+                            {% if role.permissions and 'banks' in role.permissions and ('read' in role.permissions['banks'] or 'view' in role.permissions['banks']) %}
                                 {% set ns.has_banks_read = true %}
                             {% endif %}
                         {% endfor %}
@@ -117,7 +118,7 @@
                         <!-- Organizations Menu -->
                         {% set ns = namespace(has_organizations_read=false) %}
                         {% for role in current_user.roles %}
-                            {% if role.permissions and 'organizations' in role.permissions and 'read' in role.permissions['organizations'] %}
+                            {% if role.permissions and 'organizations' in role.permissions and ('read' in role.permissions['organizations'] or 'view' in role.permissions['organizations']) %}
                                 {% set ns.has_organizations_read = true %}
                             {% endif %}
                         {% endfor %}
@@ -132,7 +133,7 @@
                         <!-- Profiles Menu -->
                         {% set ns = namespace(has_profiles_read=false) %}
                         {% for role in current_user.roles %}
-                            {% if role.permissions and 'profiles' in role.permissions and 'read' in role.permissions['profiles'] %}
+                            {% if role.permissions and 'profiles' in role.permissions and ('read' in role.permissions['profiles'] or 'view' in role.permissions['profiles'] or 'create' in role.permissions['profiles'] or 'manage' in role.permissions['profiles']) %}
                                 {% set ns.has_profiles_read = true %}
                             {% endif %}
                         {% endfor %}
@@ -148,7 +149,7 @@
                         {% set ns = namespace(has_deals_read=false, has_deals_create=false) %}
                         {% for role in current_user.roles %}
                             {% if role.permissions and 'deals' in role.permissions %}
-                                {% if 'read' in role.permissions['deals'] %}
+                                {% if 'read' in role.permissions['deals'] or 'view' in role.permissions['deals'] %}
                                     {% set ns.has_deals_read = true %}
                                 {% endif %}
                                 {% if 'create' in role.permissions['deals'] %}
@@ -236,6 +237,9 @@
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">
                                     <i class="fas fa-user me-2"></i>Profile
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('wallet.index') }}">
+                                    <i class="fas fa-wallet me-2"></i>My Wallet
                                 </a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('auth.settings') }}">
                                     <i class="fas fa-cog me-2"></i>Settings

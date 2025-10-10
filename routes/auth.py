@@ -43,13 +43,18 @@ def login():
                     flash('Please verify your email address to access all features.', 'warning')
                     return redirect(url_for('auth.verification'))
                 
+                # Handle redirect after successful login
+                next_page = request.form.get('next') or request.args.get('next')
+                if not next_page or not next_page.startswith('/'):
+                    next_page = url_for('dashboard.index')
+                
                 if request.is_json:
                     return jsonify({
                         'success': True,
                         'message': 'Login successful',
-                        'redirect': url_for('dashboard.index')
+                        'redirect': next_page
                     })
-                return redirect(url_for('dashboard.index'))
+                return redirect(next_page)
             else:
                 message = 'Account is deactivated. Please contact support.'
         else:

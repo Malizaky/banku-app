@@ -1221,6 +1221,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (['images', 'videos', 'audio', 'files_documents'].includes(question.question_type)) {
             const fileInput = questionElement.querySelector(`[name="question_${question.id}_files"]`);
             const urlInput = questionElement.querySelector(`[name="question_${question.id}_urls"]`);
+            const previewArea = document.getElementById(`media-preview-${question.id}`);
             
             // Check if at least one input exists (based on toggle settings)
             if (!fileInput && !urlInput) return null;
@@ -1233,20 +1234,42 @@ document.addEventListener('DOMContentLoaded', function() {
             }
                         
             const result = {
-                            files: [],
-                            urls: urls,
+                files: [],
+                urls: urls,
                 file_type: question.question_type
-                        };
+            };
                         
-            // Process uploaded files
-                        files.forEach(file => {
-                result.files.push({
-                                name: file.name,
-                                size: file.size,
-                                type: file.type,
-                                lastModified: file.lastModified
-                            });
-            });
+            // Process uploaded files - collect from preview area if available
+            if (previewArea) {
+                const filePreviews = previewArea.querySelectorAll('.file-preview');
+                filePreviews.forEach(preview => {
+                    const fileName = preview.querySelector('.fw-bold').textContent.replace(' ✓', '').trim();
+                    const savedNameElement = preview.querySelector('small.text-success');
+                    const savedName = savedNameElement ? savedNameElement.textContent.replace('Saved as: ', '') : fileName;
+                    
+                    // Find the original file info
+                    const originalFile = files.find(f => f.name === fileName);
+                    if (originalFile) {
+                        result.files.push({
+                            name: fileName,
+                            size: originalFile.size,
+                            type: originalFile.type,
+                            lastModified: originalFile.lastModified,
+                            saved_name: savedName
+                        });
+                    }
+                });
+            } else {
+                // Fallback: process files directly
+                files.forEach(file => {
+                    result.files.push({
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        lastModified: file.lastModified
+                    });
+                });
+            }
             
             return result;
         }
@@ -2407,10 +2430,77 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Create preview for each file
-        files.forEach((file, index) => {
-            const filePreview = createFilePreview(file, fileType, questionId, index);
-            previewArea.appendChild(filePreview);
+        // Show loading state
+        previewArea.innerHTML = '<p class="text-muted"><i class="fas fa-spinner fa-spin"></i> Uploading files...</p>';
+        
+        // Upload each file to the server
+        const uploadPromises = files.map((file, index) => {
+            return uploadFileToServer(file, fileType, questionId, index);
+        });
+        
+        // Wait for all uploads to complete
+        Promise.all(uploadPromises)
+            .then((uploadResults) => {
+                // Clear loading state
+                previewArea.innerHTML = '';
+                
+                // Create preview for each successfully uploaded file
+                uploadResults.forEach((result, index) => {
+                    if (result.success) {
+                        const filePreview = createFilePreview(result.file, fileType, questionId, index, result.fileInfo);
+                        previewArea.appendChild(filePreview);
+                    } else {
+                        // Show error for failed upload
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'alert alert-danger';
+                        errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Failed to upload ${result.file.name}: ${result.error}`;
+                        previewArea.appendChild(errorDiv);
+                    }
+                });
+            })
+            .catch((error) => {
+                console.error('Upload error:', error);
+                previewArea.innerHTML = '<p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Error uploading files</p>';
+            });
+    }
+    
+    function uploadFileToServer(file, fileType, questionId, index) {
+        return new Promise((resolve) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('question_id', questionId);
+            formData.append('category', fileType);
+            
+            fetch(`/chatbot/${flowId}/upload`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('File uploaded successfully:', data.file_info);
+                    resolve({
+                        success: true,
+                        file: file,
+                        fileInfo: data.file_info
+                    });
+                } else {
+                    console.error('Upload failed:', data.error);
+                    resolve({
+                        success: false,
+                        file: file,
+                        error: data.error
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                resolve({
+                    success: false,
+                    file: file,
+                    error: error.message
+                });
+            });
         });
     }
     
@@ -2439,17 +2529,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    function createFilePreview(file, fileType, questionId, index) {
+    function createFilePreview(file, fileType, questionId, index, fileInfo = null) {
         const fileSize = formatFileSize(file.size);
         const fileIcon = getFileIcon(file.type, fileType);
         
         const preview = document.createElement('div');
         preview.className = 'file-preview d-flex align-items-center p-2 mb-2 bg-light rounded';
+        
+        // Show upload status
+        const statusIcon = fileInfo ? '<i class="fas fa-check-circle text-success me-1"></i>' : '<i class="fas fa-upload text-warning me-1"></i>';
+        const statusText = fileInfo ? 'Uploaded' : 'Pending';
+        
         preview.innerHTML = `
             <i class="${fileIcon} me-2 text-primary"></i>
             <div class="flex-grow-1">
-                <div class="fw-bold">${file.name}</div>
-                <small class="text-muted">${fileSize} - ${file.type}</small>
+                <div class="fw-bold">${file.name} ${statusIcon}</div>
+                <small class="text-muted">${fileSize} - ${file.type} - ${statusText}</small>
+                ${fileInfo ? `<small class="text-success d-block">Saved as: ${fileInfo.saved_name}</small>` : ''}
             </div>
             <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFilePreview(this, '${fileType}', '${questionId}')">
                 <i class="fas fa-times"></i>

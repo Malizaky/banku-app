@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
 from flask_login import login_required, current_user
-from models import User, Deal, Item, Profile, Notification, Earning, Review, Information, ButtonConfiguration, ItemType, db
+from models import User, Deal, Item, Profile, Notification, Earning, Review, Information, ButtonConfiguration, ItemType, Wallet, db
+from utils.wallet_service import WalletService
 from utils.analytics import AnalyticsService, track_performance, track_errors
 from utils.caching import cached, QueryCache, ViewCache
 from utils.security import rate_limit, security_headers, threat_detection, validate_input
@@ -47,12 +48,18 @@ def index():
         (Deal.connector_id == current_user.id)
     ).filter(Deal.status == 'pending').count()
     
+    # Get wallet information
+    wallet = WalletService.get_or_create_wallet(current_user.id)
+    
     stats = {
         'total_views': total_views,
         'coming_deals': coming_deals,
         'active_deals': len(active_deals),
         'total_earnings': db.session.query(db.func.sum(Earning.amount))\
-            .filter_by(user_id=current_user.id, status='paid').scalar() or 0
+            .filter_by(user_id=current_user.id, status='paid').scalar() or 0,
+        'wallet_balance': wallet.balance,
+        'pending_earnings': db.session.query(db.func.sum(Earning.amount))\
+            .filter_by(user_id=current_user.id, status='pending').scalar() or 0
     }
     
     # Check if user has internal roles
@@ -71,7 +78,8 @@ def index():
                          user_items=user_items,
                          stats=stats,
                          internal_roles=internal_roles,
-                         dashboard_buttons=dashboard_buttons)
+                         dashboard_buttons=dashboard_buttons,
+                         wallet=wallet)
 
 @dashboard_bp.route('/stats')
 @login_required

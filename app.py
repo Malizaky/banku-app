@@ -27,15 +27,38 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['WTF_CSRF_ENABLED'] = True
 app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour
 
+# Database connection pooling and optimization
+from sqlalchemy.pool import QueuePool
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'poolclass': QueuePool,
+    'pool_size': 10,
+    'pool_recycle': 3600,
+    'pool_pre_ping': True,  # Verify connections before use
+    'max_overflow': 20,
+    'pool_timeout': 30
+}
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Security headers middleware (minimal to avoid breaking frontend)
+# Security headers and caching middleware
 @app.after_request
 def add_security_headers(response):
-    """Add minimal security headers to avoid breaking frontend"""
+    """Add security headers and caching for static files"""
     response.headers['X-Content-Type-Options'] = 'nosniff'
+    
+    # Add caching headers for static files
+    if request.endpoint == 'static':
+        response.headers['Cache-Control'] = 'public, max-age=31536000'  # 1 year
+        response.headers['Expires'] = 'Thu, 31 Dec 2025 23:59:59 GMT'
+    
+    # Add caching for HTML pages (shorter duration)
+    if response.content_type and 'text/html' in response.content_type:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'  # No caching during development
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    
     return response
 
 # Error handlers
@@ -49,7 +72,10 @@ def not_found_error(error):
 def internal_error(error):
     """Handle 500 errors"""
     logger.error(f"500 error: {str(error)}")
-    db.session.rollback()
+    try:
+        db.session.rollback()
+    except Exception as db_error:
+        logger.error(f"Database rollback failed: {str(db_error)}")
     return render_template('errors/500.html'), 500
 
 @app.errorhandler(403)
@@ -57,6 +83,17 @@ def forbidden_error(error):
     """Handle 403 errors"""
     logger.warning(f"403 error: {request.url}")
     return render_template('errors/403.html'), 403
+
+@app.errorhandler(413)
+def file_too_large_error(error):
+    """Handle file upload size errors"""
+    logger.warning(f"File too large: {request.url}")
+    if request.is_json:
+        return jsonify({'success': False, 'error': 'File is too large. Maximum size is 16MB.'}), 413
+    # Show error on the same page instead of redirecting
+    return render_template('errors/413.html', error_message='File is too large. Maximum size is 16MB.'), 413
+
+# Exception handler is now handled by utils/error_handling.py
 
 # Request logging middleware
 @app.before_request
@@ -66,6 +103,10 @@ def log_request_info():
 
 # Import models first to initialize db
 from models import db, User, Role, Tag, Profile, Item, Project, ProjectContributor, Deal, DealItem, DealMessage, Review, Earning, Notification, Bank, Information, ProductCategory, ButtonConfiguration, ItemType, DataStorageMapping, ChatbotCompletion, AnalyticsEvent, ABTest, ABTestAssignment, PerformanceMetric
+
+# Import error handling and health monitoring
+from utils.error_handling import register_error_handlers
+from utils.health_monitor import initialize_health_monitoring
 
 # Initialize extensions
 db.init_app(app)
@@ -91,6 +132,7 @@ from routes.ai_matching import ai_matching_bp
 from routes.organizations import organizations_bp
 from routes.feedback import feedback_bp
 from routes.scoring_admin import scoring_admin_bp
+from routes.wallet import wallet_bp
 
 # Register blueprints
 app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -107,6 +149,28 @@ app.register_blueprint(ai_matching_bp, url_prefix='/ai-matching')
 app.register_blueprint(organizations_bp, url_prefix='')
 app.register_blueprint(feedback_bp, url_prefix='')
 app.register_blueprint(scoring_admin_bp, url_prefix='/admin')
+app.register_blueprint(wallet_bp, url_prefix='/wallet')
+
+# Register error handlers and health monitoring
+register_error_handlers(app)
+initialize_health_monitoring(app)
+
+# Register template filters
+from utils.template_filters import register_template_filters
+from utils.location_formatter import format_location_simple, format_location_with_link
+
+register_template_filters(app)
+
+# Register simple location formatter
+@app.template_filter('format_location')
+def format_location_filter(location_string):
+    """Simple location formatter without external API calls"""
+    return format_location_simple(location_string)
+
+@app.template_filter('format_location_with_link')
+def format_location_with_link_filter(location_string):
+    """Format location with optional clickable link"""
+    return format_location_with_link(location_string)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -151,6 +215,7 @@ def cleanup_on_exit():
     try:
         from utils.advanced_data_collector import advanced_collector
         advanced_collector.stop_scheduled_collectors()
+        print("INFO: Advanced data collector cleanup completed")
         print("✓ Data collector scheduler stopped gracefully")
     except Exception as e:
         print(f"Warning: Error stopping scheduler: {e}")
@@ -186,7 +251,7 @@ if __name__ == '__main__':
             )
             db.session.add(admin_role)
             db.session.commit()
-            print("✅ Admin role created!")
+            print("Admin role created!")
         
         # Create admin user if not exists
         admin_user = User.query.filter_by(username='admin').first()
@@ -202,7 +267,7 @@ if __name__ == '__main__':
             )
             db.session.add(admin_user)
             db.session.commit()
-            print("✅ Admin user created!")
+            print("Admin user created!")
             
             # Assign admin role to user using direct SQL
             if admin_role:
@@ -211,18 +276,21 @@ if __name__ == '__main__':
                     {'user_id': admin_user.id, 'role_id': admin_role.id}
                 )
                 db.session.commit()
-                print("✅ Admin role assigned to user!")
+                print("Admin role assigned to user!")
         else:
-            print("✅ Admin user already exists!")
+            print("Admin user already exists!")
         
-        print("🎉 Admin setup complete! Login: admin / admin123")
+        print("Admin setup complete! Login: admin / admin123")
         
-        # Start the advanced data collector scheduler
+        # Start the advanced data collector scheduler (RE-ENABLED FOR TESTING)
         try:
             from utils.advanced_data_collector import advanced_collector
             advanced_collector.start_scheduled_collectors()
             print("SUCCESS: Advanced Data Collector scheduler started successfully!")
+        except ImportError as e:
+            print(f"INFO: Advanced data collector not available: {e}")
         except Exception as e:
             print(f"WARNING: Could not start data collector scheduler: {e}")
+            logger.error(f"Data collector startup error: {str(e)}", exc_info=True)
     
     app.run(debug=True, host='0.0.0.0', port=5000)

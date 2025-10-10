@@ -15,6 +15,7 @@
                     </div>
                     
                     <form id="loginForm" method="POST">
+                        <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
                         <div class="mb-3">
                             <label for="login_field" class="form-label">Email or Username</label>
                             <div class="input-group">

@@ -27,7 +27,7 @@
                                         <th>Order</th>
                                         <th>Name</th>
                                         <th>Display Name</th>
-                                        <th>Icon & Color</th>
+                                        <th>Icon</th>
                                         <th>Max per User</th>
                                         <th>Verification</th>
                                         <th>Status</th>
@@ -51,8 +51,7 @@
                                         </td>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <i class="{{ org_type.icon_class }} me-2 text-{{ org_type.color_class }}"></i>
-                                                <span class="badge bg-{{ org_type.color_class }}">{{ org_type.color_class.title() }}</span>
+                                                <i class="{{ org_type.icon_class }} fa-1x" style="color: {{ org_type.color_class if org_type.color_class.startswith('#') else '#007bff' }}; font-size: 1.25em;"></i>
                                             </div>
                                         </td>
                                         <td>

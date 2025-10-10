@@ -11,6 +11,7 @@ from utils.data_collection import collection_engine
 from datetime import datetime
 import re
 import uuid
+import json
 
 organizations_bp = Blueprint('organizations', __name__)
 
@@ -66,7 +67,13 @@ def create():
 def create_post():
     """Handle organization creation"""
     try:
-        data = request.get_json()
+        # Handle both JSON and FormData requests
+        if request.is_json:
+            data = request.get_json()
+        else:
+            # Handle file upload with FormData
+            data = json.loads(request.form.get('data'))
+            photo_file = request.files.get('photo')
         
         # Validate required fields
         required_fields = ['name', 'organization_type_id', 'description', 'is_public']
@@ -95,6 +102,15 @@ def create_post():
         # Determine initial status
         initial_status = 'pending_verification' if organization_type.requires_verification else 'active'
         
+        # Handle photo upload if provided
+        logo_filename = None
+        if 'photo_file' in locals() and photo_file:
+            from utils.file_utils import save_uploaded_file
+            try:
+                logo_filename = save_uploaded_file(photo_file, 'organizations')
+            except Exception as e:
+                return jsonify({'success': False, 'error': f'Photo upload failed: {str(e)}'}), 400
+        
         # Create organization
         organization = Organization(
             name=data['name'],
@@ -104,7 +120,18 @@ def create_post():
             is_public=data['is_public'],
             status=initial_status,
             created_by=current_user.id,
-            current_owner=current_user.id
+            current_owner=current_user.id,
+            # New fields
+            logo=logo_filename,
+            website=data.get('website'),
+            phone=data.get('phone'),
+            location=data.get('location'),
+            linkedin_url=data.get('linkedin_url'),
+            youtube_url=data.get('youtube_url'),
+            facebook_url=data.get('facebook_url'),
+            instagram_url=data.get('instagram_url'),
+            tiktok_url=data.get('tiktok_url'),
+            x_url=data.get('x_url')
         )
         
         db.session.add(organization)
@@ -160,18 +187,27 @@ def create_post():
 @require_permission('organizations', 'read')
 def view(slug):
     """View organization details"""
+    from utils.permissions import has_permission
+    
     organization = Organization.query.filter_by(slug=slug).first_or_404()
     
-    # Check if user has access
-    membership = OrganizationMember.query.filter_by(
-        organization_id=organization.id,
-        user_id=current_user.id,
-        status='active'
-    ).first()
+    # Check if user has permission to view private organizations
+    can_view_private = has_permission(current_user, 'organizations', 'view_private')
     
-    if not membership and not organization.is_public:
-        flash('You do not have access to this organization', 'error')
-        return redirect(url_for('organizations.index'))
+    if can_view_private:
+        # Users with private access can view any organization
+        membership = None  # Don't need membership for private access
+    else:
+        # Check if user has access
+        membership = OrganizationMember.query.filter_by(
+            organization_id=organization.id,
+            user_id=current_user.id,
+            status='active'
+        ).first()
+        
+        if not membership and not organization.is_public:
+            flash('You do not have access to this organization', 'error')
+            return redirect(url_for('organizations.index'))
     
     # Get members
     members = OrganizationMember.query.filter_by(
@@ -190,12 +226,56 @@ def view(slug):
         organization_id=organization.id
     ).order_by(OrganizationHistory.occurred_at.desc()).limit(10).all()
     
+    # Check About tab permissions
+    is_owner = organization.created_by == current_user.id
+    can_view_about = False
+    
+    if is_owner:
+        # Owner can always see their own About tab
+        can_view_about = True
+    elif membership:
+        # Active members can see About tab
+        can_view_about = True
+    else:
+        # Others need view_about_others permission
+        can_view_about = has_permission(current_user, 'organizations', 'view_about_others')
+    
+    # Check Members tab permissions
+    can_view_members = False
+    
+    if is_owner:
+        # Owner can always see their own Members tab
+        can_view_members = True
+    elif membership:
+        # Active members can see Members tab
+        can_view_members = True
+    else:
+        # Others need view_members_others permission
+        can_view_members = has_permission(current_user, 'organizations', 'view_members_others')
+    
+    # Check Activity tab permissions
+    can_view_activity = False
+    
+    if is_owner:
+        # Owner can always see their own Activity tab
+        can_view_activity = True
+    elif membership:
+        # Active members can see Activity tab
+        can_view_activity = True
+    else:
+        # Others need view_activity_others permission
+        can_view_activity = has_permission(current_user, 'organizations', 'view_activity_others')
+    
     return render_template('organizations/view.html', 
                          organization=organization,
                          membership=membership,
                          members=members,
                          content=content,
-                         history=history)
+                         history=history,
+                         can_view_about=can_view_about,
+                         can_view_members=can_view_members,
+                         can_view_activity=can_view_activity,
+                         is_owner=is_owner)
 
 @organizations_bp.route('/organizations/<slug>/members')
 @login_required
@@ -227,18 +307,27 @@ def members(slug):
 @login_required
 def content(slug):
     """Manage organization content"""
+    from utils.permissions import has_permission
+    
     organization = Organization.query.filter_by(slug=slug).first_or_404()
     
-    # Check if user has access
-    membership = OrganizationMember.query.filter_by(
-        organization_id=organization.id,
-        user_id=current_user.id,
-        status='active'
-    ).first()
+    # Check if user has permission to view private organizations
+    can_view_private = has_permission(current_user, 'organizations', 'view_private')
     
-    if not membership and not organization.is_public:
-        flash('You do not have access to this organization', 'error')
-        return redirect(url_for('organizations.index'))
+    if can_view_private:
+        # Users with private access can view any organization
+        membership = None  # Don't need membership for private access
+    else:
+        # Check if user has access
+        membership = OrganizationMember.query.filter_by(
+            organization_id=organization.id,
+            user_id=current_user.id,
+            status='active'
+        ).first()
+        
+        if not membership and not organization.is_public:
+            flash('You do not have access to this organization', 'error')
+            return redirect(url_for('organizations.index'))
     
     # Get all content
     content = OrganizationContent.query.filter_by(
@@ -329,6 +418,17 @@ def settings(slug):
             organization.name = request.form.get('name', organization.name)
             organization.description = request.form.get('description', organization.description)
             organization.is_public = request.form.get('is_public') == '1'
+            
+            # Update new contact and social media fields
+            organization.website = request.form.get('website', '') or None
+            organization.phone = request.form.get('phone', '') or None
+            organization.location = request.form.get('location', '') or None
+            organization.linkedin_url = request.form.get('linkedin_url', '') or None
+            organization.youtube_url = request.form.get('youtube_url', '') or None
+            organization.facebook_url = request.form.get('facebook_url', '') or None
+            organization.instagram_url = request.form.get('instagram_url', '') or None
+            organization.tiktok_url = request.form.get('tiktok_url', '') or None
+            organization.x_url = request.form.get('x_url', '') or None
             
             db.session.commit()
             flash('Settings updated successfully!', 'success')

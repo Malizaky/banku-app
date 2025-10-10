@@ -69,7 +69,7 @@
                                         <span class="badge bg-info" id="user-count-{{ role.id }}">Loading...</span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-success" id="perm-count-{{ role.id }}">Loading...</span>
+                                        <span class="badge bg-secondary" id="perm-count-{{ role.id }}">Loading...</span>
                                     </td>
                                     <td>
                                         <span class="badge bg-{{ 'success' if role.is_active else 'danger' }}">
@@ -201,7 +201,7 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <h6>Available Permissions</h6>
+                        <h6>Available Permissions <span id="permissionCount" class="badge bg-info ms-2">Loading...</span></h6>
                         <div class="list-group" style="max-height: 400px; overflow-y: auto;">
                             {% for permission in permissions %}
                             <div class="list-group-item d-flex justify-content-between align-items-center">
@@ -321,7 +321,7 @@
             <div class="modal-body">
                 <div class="row">
                     <div class="col-md-4">
-                        <h6>Permission Groups</h6>
+                        <h6>Permission Groups <span id="groupTotals" class="badge bg-secondary ms-2">Loading...</span></h6>
                         <div class="accordion" id="permissionGroups">
                             <!-- Permission groups will be loaded here -->
                         </div>
@@ -338,8 +338,14 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="savePermissions()">Save Changes</button>
+                <div class="d-flex align-items-center">
+                    <small class="text-muted me-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Save permissions for current tab only
+                    </small>
+                    <button type="button" class="btn btn-primary" onclick="savePermissions()">Save Changes</button>
+                    <button type="button" class="btn btn-secondary ms-2" data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -395,10 +401,22 @@ function loadRoleCounts() {
     fetch(`/admin/roles/{{ role.id }}/permission-count`)
         .then(response => response.json())
         .then(data => {
-            document.getElementById('perm-count-{{ role.id }}').textContent = `${data.count} permissions`;
+            const permElement = document.getElementById('perm-count-{{ role.id }}');
+            permElement.textContent = `${data.granted}/${data.total}`;
+            
+            // Set badge color based on granted/total ratio
+            if (data.granted === data.total && data.total > 0) {
+                permElement.className = 'badge bg-success'; // All permissions granted
+            } else if (data.granted > 0) {
+                permElement.className = 'badge bg-warning'; // Some permissions granted
+            } else {
+                permElement.className = 'badge bg-secondary'; // No permissions granted
+            }
         })
         .catch(error => {
-            document.getElementById('perm-count-{{ role.id }}').textContent = '0 permissions';
+            const permElement = document.getElementById('perm-count-{{ role.id }}');
+            permElement.textContent = '0/200';
+            permElement.className = 'badge bg-secondary';
         });
     {% endfor %}
 }
@@ -473,9 +491,13 @@ function manageRolePermissions(roleId) {
 function loadPermissionCategories() {
     // Define permission groups with their associated resources
     const permissionGroups = {
+        'Admin Dashboard': {
+            icon: 'fas fa-tachometer-alt',
+            resources: ['admin_dashboard', 'admin_management']
+        },
         'User Management': {
             icon: 'fas fa-users',
-            resources: ['users', 'profiles', 'roles', 'verifications', 'messaging']
+            resources: ['users', 'profiles', 'roles', 'verifications', 'messaging', 'profile']
         },
         'Organization Management': {
             icon: 'fas fa-building',
@@ -483,7 +505,7 @@ function loadPermissionCategories() {
         },
         'Bank & Content Management': {
             icon: 'fas fa-university',
-            resources: ['banks', 'items', 'item_types', 'needs']
+            resources: ['banks', 'items', 'item_types', 'needs', 'categories', 'subcategories']
         },
         'Business Operations': {
             icon: 'fas fa-handshake',
@@ -493,13 +515,17 @@ function loadPermissionCategories() {
             icon: 'fas fa-brain',
             resources: ['ai_matching', 'ai_recommendations']
         },
+        'Scoring System': {
+            icon: 'fas fa-star',
+            resources: ['scoring', 'scoring_management']
+        },
         'Analytics & Reporting': {
             icon: 'fas fa-chart-bar',
             resources: ['analytics', 'reports', 'performance_metrics', 'ab_tests']
         },
         'System Administration': {
             icon: 'fas fa-cogs',
-            resources: ['system_settings', 'monitoring', 'security', 'api']
+            resources: ['system_settings', 'monitoring', 'security', 'api', 'system_health', 'error_logs', 'system_logs', 'admin', 'dashboard', 'settings', 'logs']
         },
         'Content Management System': {
             icon: 'fas fa-edit',
@@ -507,15 +533,19 @@ function loadPermissionCategories() {
         },
         'Chatbot Management': {
             icon: 'fas fa-robot',
-            resources: ['chatbots', 'chatbot_flows', 'chatbot_questions', 'chatbot_responses', 'step_blocks']
+            resources: ['chatbots', 'chatbot_flows', 'chatbot_questions', 'chatbot_responses', 'step_blocks', 'chatbot']
         },
         'Data & Integration': {
             icon: 'fas fa-database',
-            resources: ['data_collectors', 'data_collection', 'data_mappings', 'integrations']
+            resources: ['data_collectors', 'data_collection', 'data_mappings', 'integrations', 'collectors']
         },
         'UI & Customization': {
             icon: 'fas fa-paint-brush',
             resources: ['dynamic_buttons']
+        },
+        'Wallet & Financial Management': {
+            icon: 'fas fa-wallet',
+            resources: ['wallet', 'wallet_admin', 'earnings', 'withdrawals', 'transactions']
         }
     };
 
@@ -556,45 +586,48 @@ function loadPermissionCategories() {
 
     // Calculate permission counts for all groups upfront
     calculateAllGroupCounts(permissionGroups);
+    
+    // Update main page permission count
+    updateMainPagePermissionCount();
+    
+    // Update group totals in modal
+    updateGroupTotals();
 }
 
 function calculateAllGroupCounts(permissionGroups) {
     const groupNames = Object.keys(permissionGroups);
-    let completedGroups = 0;
     
     groupNames.forEach((groupName, index) => {
         const group = permissionGroups[groupName];
         const groupId = `group-${index}`;
         
-        // Calculate total permissions for this group
-        let totalPermissions = 0;
-        let loadedResources = 0;
-        
-        group.resources.forEach(resource => {
+        // Calculate total and granted permissions for this group using Promise.all for proper async handling
+        const resourcePromises = group.resources.map(resource => 
             fetch(`/admin/permissions/category/${resource}?role_id=${currentRoleId}`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.permissions) {
-                        totalPermissions += data.permissions.length;
-                    }
-                    loadedResources++;
-                    
-                    if (loadedResources === group.resources.length) {
-                        // Update the count badge
-                        updateGroupCount(groupName, totalPermissions);
-                        completedGroups++;
-                    }
+                    const permissions = data.permissions || [];
+                    return {
+                        total: permissions.length,
+                        granted: permissions.filter(p => p.granted).length
+                    };
                 })
                 .catch(error => {
                     console.error(`Error loading permissions for ${resource}:`, error);
-                    loadedResources++;
-                    
-                    if (loadedResources === group.resources.length) {
-                        updateGroupCount(groupName, totalPermissions);
-                        completedGroups++;
-                    }
-                });
-        });
+                    return { total: 0, granted: 0 };
+                })
+        );
+        
+        Promise.all(resourcePromises)
+            .then(permissionData => {
+                const totalPermissions = permissionData.reduce((sum, data) => sum + data.total, 0);
+                const grantedPermissions = permissionData.reduce((sum, data) => sum + data.granted, 0);
+                updateGroupCount(groupName, `${grantedPermissions}/${totalPermissions}`);
+            })
+            .catch(error => {
+                console.error(`Error calculating permissions for group ${groupName}:`, error);
+                updateGroupCount(groupName, "0/0");
+            });
     });
 }
 
@@ -612,36 +645,34 @@ function loadPermissionsForGroup(groupName, resources) {
         </div>
     `;
     
-    // Load permissions for each resource in the group
-    const allPermissions = [];
-    let loadedCount = 0;
-    
-    resources.forEach(resource => {
+    // Load permissions for each resource in the group using Promise.all
+    const resourcePromises = resources.map(resource => 
         fetch(`/admin/permissions/category/${resource}?role_id=${currentRoleId}`)
             .then(response => response.json())
-            .then(data => {
-                if (data.permissions) {
-                    allPermissions.push(...data.permissions);
-                }
-                loadedCount++;
-                
-                if (loadedCount === resources.length) {
-                    displayGroupPermissions(allPermissions, groupName);
-                    // Update the count badge for this group
-                    updateGroupCount(groupName, allPermissions.length);
-                }
-            })
+            .then(data => data.permissions || [])
             .catch(error => {
                 console.error(`Error loading permissions for ${resource}:`, error);
-                loadedCount++;
-                
-                if (loadedCount === resources.length) {
-                    displayGroupPermissions(allPermissions, groupName);
-                    // Update the count badge for this group
-                    updateGroupCount(groupName, allPermissions.length);
-                }
-            });
-    });
+                return [];
+            })
+    );
+    
+    Promise.all(resourcePromises)
+        .then(permissionArrays => {
+            const allPermissions = permissionArrays.flat();
+            displayGroupPermissions(allPermissions, groupName);
+            // Update the count badge for this group with granted/total format
+            const grantedCount = allPermissions.filter(p => p.granted).length;
+            updateGroupCount(groupName, `${grantedCount}/${allPermissions.length}`);
+        })
+        .catch(error => {
+            console.error(`Error loading permissions for group ${groupName}:`, error);
+            permissionsDiv.innerHTML = `
+                <div class="text-center text-danger py-4">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                    <p>Error loading permissions. Please try again.</p>
+                </div>
+            `;
+        });
 }
 
 function updateGroupCount(groupName, count) {
@@ -652,14 +683,175 @@ function updateGroupCount(groupName, count) {
             const badge = button.querySelector('.badge');
             if (badge) {
                 badge.innerHTML = count; // Remove spinner, show count
-                badge.className = count > 0 ? 'badge bg-primary ms-2' : 'badge bg-secondary ms-2';
+                // Parse the count to determine badge color
+                const [granted, total] = count.toString().split('/').map(n => parseInt(n) || 0);
+                if (granted === total && total > 0) {
+                    badge.className = 'badge bg-success ms-2'; // All permissions granted
+                } else if (granted > 0) {
+                    badge.className = 'badge bg-warning ms-2'; // Some permissions granted
+                } else {
+                    badge.className = 'badge bg-secondary ms-2'; // No permissions granted
+                }
             }
         }
     });
 }
 
+function updateMainPagePermissionCount() {
+    // Calculate total permissions from all available permissions
+    fetch('/admin/permissions/categories')
+        .then(response => response.json())
+        .then(data => {
+            const categories = data.categories || [];
+            let totalPermissions = 0;
+            let loadedCount = 0;
+            
+            // Count permissions from all categories
+            const categoryPromises = categories.map(category => 
+                fetch(`/admin/permissions/category/${category}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const count = data.permissions ? data.permissions.length : 0;
+                        totalPermissions += count;
+                        loadedCount++;
+                        
+                        // Update the badge when all categories are loaded
+                        if (loadedCount === categories.length) {
+                            const permissionCountElement = document.getElementById('permissionCount');
+                            if (permissionCountElement) {
+                                permissionCountElement.textContent = `${totalPermissions}`;
+                                permissionCountElement.className = 'badge bg-success ms-2';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error(`Error loading permissions for ${category}:`, error);
+                        loadedCount++;
+                    })
+            );
+            
+            Promise.all(categoryPromises).catch(error => {
+                console.error('Error loading permission counts:', error);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading permission categories:', error);
+            const permissionCountElement = document.getElementById('permissionCount');
+            if (permissionCountElement) {
+                permissionCountElement.textContent = 'Error loading';
+                permissionCountElement.className = 'badge bg-danger ms-2';
+            }
+        });
+}
+
+function updateGroupTotals() {
+    // Get all permission groups and calculate totals
+    const permissionGroups = {
+        'Admin Dashboard': {
+            icon: 'fas fa-tachometer-alt',
+            resources: ['admin_dashboard', 'admin_management']
+        },
+        'User Management': {
+            icon: 'fas fa-users',
+            resources: ['users', 'profiles', 'roles', 'verifications', 'messaging', 'profile']
+        },
+        'Organization Management': {
+            icon: 'fas fa-building',
+            resources: ['organizations', 'organization_types']
+        },
+        'Bank & Content Management': {
+            icon: 'fas fa-university',
+            resources: ['banks', 'items', 'item_types', 'needs', 'categories', 'subcategories']
+        },
+        'Business Operations': {
+            icon: 'fas fa-handshake',
+            resources: ['deals', 'reviews', 'notifications', 'feedback']
+        },
+        'AI & Matching System': {
+            icon: 'fas fa-brain',
+            resources: ['ai_matching', 'ai_recommendations']
+        },
+        'Scoring System': {
+            icon: 'fas fa-star',
+            resources: ['scoring', 'scoring_management']
+        },
+        'Analytics & Reporting': {
+            icon: 'fas fa-chart-bar',
+            resources: ['analytics', 'reports', 'performance_metrics', 'ab_tests']
+        },
+        'System Administration': {
+            icon: 'fas fa-cogs',
+            resources: ['system_settings', 'monitoring', 'security', 'api', 'system_health', 'error_logs', 'system_logs', 'admin', 'dashboard', 'settings', 'logs']
+        },
+        'Content Management System': {
+            icon: 'fas fa-edit',
+            resources: ['cms', 'pages', 'content_blocks', 'navigation', 'email_templates']
+        },
+        'Chatbot Management': {
+            icon: 'fas fa-robot',
+            resources: ['chatbots', 'chatbot_flows', 'chatbot_questions', 'chatbot_responses', 'step_blocks', 'chatbot']
+        },
+        'Data & Integration': {
+            icon: 'fas fa-database',
+            resources: ['data_collectors', 'data_collection', 'data_mappings', 'integrations', 'collectors']
+        },
+        'UI & Customization': {
+            icon: 'fas fa-paint-brush',
+            resources: ['dynamic_buttons']
+        },
+        'Wallet & Financial Management': {
+            icon: 'fas fa-wallet',
+            resources: ['wallet', 'wallet_admin', 'earnings', 'withdrawals', 'transactions']
+        }
+    };
+    
+    let totalPermissions = 0;
+    let loadedGroups = 0;
+    const totalGroups = Object.keys(permissionGroups).length;
+    
+    Object.keys(permissionGroups).forEach(groupName => {
+        const group = permissionGroups[groupName];
+        const resourcePromises = group.resources.map(resource => 
+            fetch(`/admin/permissions/category/${resource}`)
+                .then(response => response.json())
+                .then(data => data.permissions ? data.permissions.length : 0)
+                .catch(error => {
+                    console.error(`Error loading permissions for ${resource}:`, error);
+                    return 0;
+                })
+        );
+        
+        Promise.all(resourcePromises)
+            .then(permissionCounts => {
+                const groupTotal = permissionCounts.reduce((sum, count) => sum + count, 0);
+                totalPermissions += groupTotal;
+                loadedGroups++;
+                
+                // Update the group totals badge when all groups are loaded
+                if (loadedGroups === totalGroups) {
+                    const groupTotalsElement = document.getElementById('groupTotals');
+                    if (groupTotalsElement) {
+                        groupTotalsElement.textContent = `${totalPermissions}`;
+                        groupTotalsElement.className = 'badge bg-info ms-2';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error(`Error calculating totals for group ${groupName}:`, error);
+                loadedGroups++;
+            });
+    });
+}
+
 function displayGroupPermissions(permissions, groupName) {
     const permissionsDiv = document.getElementById('permissionsList');
+    
+    // Update the category title with permission count
+    const categoryTitle = document.getElementById('categoryTitle');
+    if (categoryTitle) {
+        const grantedCount = permissions.filter(p => p.granted).length;
+        categoryTitle.textContent = `${groupName} (${grantedCount}/${permissions.length})`;
+    }
     
     if (permissions.length === 0) {
         permissionsDiv.innerHTML = `
@@ -798,6 +990,12 @@ function savePermissions() {
                     alertDiv.remove();
                 }
             }, 3000);
+            
+            // Update the group count badge after saving
+            const grantedCount = permissions.filter(p => p.granted).length;
+            const totalCount = permissions.length;
+            const groupName = document.getElementById('categoryTitle').textContent.split(' (')[0];
+            updateGroupCount(groupName, `${grantedCount}/${totalCount}`);
         } else {
             alert('Error: ' + data.message);
         }

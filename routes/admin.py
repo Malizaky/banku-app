@@ -1,7 +1,9 @@
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
-from models import User, Role, UserRole, Tag, Deal, Item, Profile, ProfileType, Earning, Notification, ChatbotFlow, ChatbotQuestion, ChatbotResponse, ChatbotStepBlock, Page, ContentBlock, NavigationMenu, SiteSetting, EmailTemplate, PageWidget, PageLayout, WidgetTemplate, Category, Subcategory, ButtonConfiguration, ItemType, DataStorageMapping, ChatbotCompletion, Bank, AnalyticsEvent, ABTest, ABTestAssignment, PerformanceMetric, DataCollector, BankCollector, BankContent, Organization, OrganizationType, ItemVisibilityScore, ItemCredibilityScore, ItemReviewScore, db
+from datetime import datetime
+from models import User, Role, UserRole, Tag, Deal, Item, Profile, ProfileType, Earning, Notification, ChatbotFlow, ChatbotQuestion, ChatbotResponse, ChatbotStepBlock, Page, ContentBlock, NavigationMenu, SiteSetting, EmailTemplate, PageWidget, PageLayout, WidgetTemplate, Category, Subcategory, ButtonConfiguration, ItemType, DataStorageMapping, ChatbotCompletion, Bank, AnalyticsEvent, ABTest, ABTestAssignment, PerformanceMetric, DataCollector, BankCollector, BankContent, Organization, OrganizationType, ItemVisibilityScore, ItemCredibilityScore, ItemReviewScore, WalletTransaction, WithdrawalRequest, db
 from utils.data_collection import collection_engine
+from utils.permissions import require_permission
 from functools import wraps
 
 admin_bp = Blueprint('admin', __name__)
@@ -15,13 +17,13 @@ def admin_required(f):
         admin_role = Role.query.filter_by(name='Admin').first()
         if not admin_role:
             flash('Admin role not found', 'error')
-            return redirect(url_for('dashboard.index'))
+            return redirect(request.referrer or url_for('index'))
         
         # Check if user has admin role using UserRole table
         user_admin_role = UserRole.query.filter_by(user_id=current_user.id, role_id=admin_role.id, is_active=True).first()
         if not user_admin_role:
             flash('Admin access required', 'error')
-            return redirect(url_for('dashboard.index'))
+            return redirect(request.referrer or url_for('index'))
         
         return f(*args, **kwargs)
     return decorated_function
@@ -413,46 +415,102 @@ def get_permissions_for_category(category):
     
     # Define all possible actions for each resource
     resource_actions = {
-        'users': ['create', 'read', 'update', 'delete', 'manage_roles'],
-        'roles': ['create', 'read', 'update', 'delete'],
-        'deals': ['create', 'read', 'update', 'delete', 'manage_status', 'send_messages'],
-        'items': ['create', 'read', 'update', 'delete', 'verify', 'manage_categories'],
-        'needs': ['create', 'read', 'update', 'delete', 'verify'],
-        'profiles': ['create', 'read', 'update', 'delete', 'manage'],
-        'organizations': ['create', 'read', 'update', 'delete', 'manage_members', 'verify'],
-        'organization_types': ['create', 'read', 'update', 'delete'],
+        # Core User Management
+        'users': ['create', 'delete', 'manage_roles', 'toggle_status', 'verify_email', 'view', 'edit', 'assign_roles'],
+        'roles': ['create', 'delete', 'view', 'edit', 'manage_permissions'],
+        
+        # Business Logic
+        'deals': ['create', 'delete', 'manage_status', 'send_messages', 'view', 'edit'],
+        'items': ['create', 'delete', 'verify', 'manage_categories', 'view', 'edit'],
+        'needs': ['create', 'delete', 'verify'],
+        'profiles': ['create', 'delete', 'manage', 'view_private', 'view_about_own', 'view_about_others', 'view_activity_own', 'view_activity_others'],
+        'organizations': ['create', 'delete', 'manage_members', 'verify', 'view', 'edit', 'join', 'view_private', 'view_about_own', 'view_about_others', 'view_members_own', 'view_members_others', 'view_activity_own', 'view_activity_others'],
+        'organization_types': ['create', 'delete'],
+        
+        # AI & Matching
         'ai_matching': ['access_dashboard', 'access_engine', 'generate_recommendations', 'manage_matches'],
-        'ai_recommendations': ['create', 'read', 'update', 'delete', 'rate', 'view_reports'],
-        'banks': ['create', 'read', 'update', 'delete', 'manage_content'],
-        'data_collectors': ['create', 'read', 'update', 'delete', 'run', 'monitor'],
-        'data_collection': ['create', 'read', 'update', 'delete', 'manage'],
-        'cms': ['create', 'read', 'update', 'delete', 'manage_pages', 'manage_blocks', 'manage_navigation'],
-        'pages': ['create', 'read', 'update', 'delete', 'publish', 'preview'],
-        'content_blocks': ['create', 'read', 'update', 'delete'],
-        'navigation': ['create', 'read', 'update', 'delete'],
-        'email_templates': ['create', 'read', 'update', 'delete'],
-        'dynamic_buttons': ['create', 'read', 'update', 'delete'],
-        'item_types': ['create', 'read', 'update', 'delete'],
-        'data_mappings': ['create', 'read', 'update', 'delete'],
-        'chatbots': ['create', 'read', 'update', 'delete', 'manage_flows', 'manage_questions', 'manage_responses'],
-        'chatbot_flows': ['create', 'read', 'update', 'delete', 'duplicate', 'toggle'],
-        'chatbot_questions': ['create', 'read', 'update', 'delete'],
-        'chatbot_responses': ['create', 'read', 'update', 'delete'],
-        'step_blocks': ['create', 'read', 'update', 'delete'],
-        'analytics': ['read', 'advanced_analytics', 'realtime_analytics', 'ab_testing'],
-        'reports': ['generate', 'view_all', 'export'],
-        'performance_metrics': ['read', 'monitor'],
-        'ab_tests': ['create', 'read', 'update', 'delete', 'run'],
-        'system_settings': ['read', 'update'],
+        'ai_recommendations': ['create', 'delete', 'rate', 'view_reports'],
+        
+        # Banks & Data
+        'banks': ['create', 'delete', 'manage_content', 'view', 'edit', 'use'],
+        'data_collectors': ['create', 'delete', 'run', 'monitor', 'test', 'toggle', 'logs', 'data'],
+        'data_collection': ['create', 'delete', 'manage'],
+        'collectors': ['create', 'delete', 'run', 'view', 'edit'],
+        
+        # Content Management System
+        'cms': ['create', 'delete', 'manage_pages', 'manage_blocks', 'manage_navigation', 'dashboard'],
+        'pages': ['create', 'delete', 'publish', 'preview', 'toggle', 'builder', 'widgets'],
+        'content_blocks': ['create', 'delete', 'toggle'],
+        'navigation': ['create', 'delete', 'toggle'],
+        'email_templates': ['create', 'delete'],
+        
+        # Dynamic Configuration
+        'dynamic_buttons': ['create', 'delete'],
+        'item_types': ['create', 'delete'],
+        'data_mappings': ['create', 'delete'],
+        
+        # Chatbot System
+        'chatbots': ['create', 'delete', 'manage_flows', 'manage_questions', 'manage_responses', 'view', 'edit'],
+        'chatbot_flows': ['create', 'delete', 'duplicate', 'toggle', 'responses', 'analytics'],
+        'chatbot_questions': ['create', 'delete'],
+        'chatbot_responses': ['create', 'delete'],
+        'step_blocks': ['create', 'delete', 'questions'],
+        'chatbot': ['use'],
+        
+        # Analytics & Reports
+        'analytics': ['advanced_analytics', 'realtime_analytics', 'ab_testing', 'events', 'view', 'use'],
+        'reports': ['generate', 'view_all', 'export', 'comprehensive', 'overview', 'user_activity', 'system_performance', 'business_metrics', 'security_events', 'ab_test_results'],
+        'performance_metrics': ['monitor'],
+        'ab_tests': ['create', 'delete', 'run'],
+        
+        # System Management
+        'system_settings': ['view', 'edit'],
         'verifications': ['approve', 'reject', 'manage'],
-        'notifications': ['create', 'read', 'update', 'delete', 'send'],
-        'feedback': ['read', 'manage', 'respond'],
+        'notifications': ['create', 'delete', 'send'],
+        'feedback': ['manage', 'respond'],
+        'settings': ['manage'],
+        'dashboard': ['view'],
+        'admin': ['access'],
+        'logs': ['view'],
+        
+        # API & Integration
         'api': ['access', 'manage_keys', 'monitor_usage'],
-        'integrations': ['create', 'read', 'update', 'delete', 'test'],
+        'integrations': ['create', 'delete', 'test'],
+        
+        # Security & Monitoring
         'security': ['monitor', 'manage_incidents', 'audit_logs'],
         'monitoring': ['system_health', 'performance', 'errors'],
-        'messaging': ['send', 'read_own'],
-        'reviews': ['create', 'read', 'update_own']
+        'system_health': ['monitor', 'detailed'],
+        
+        # Scoring System
+        'scoring': ['manage', 'visibility', 'credibility', 'review', 'recalculate'],
+        'scoring_management': ['access', 'visibility', 'credibility', 'review'],
+        
+        # Admin Dashboard
+        'admin_dashboard': ['access', 'view_stats', 'manage_stats'],
+        'admin_management': ['access', 'users', 'roles', 'deals', 'verifications'],
+        
+        # Communication
+        'messaging': ['send', 'view_own'],
+        'reviews': ['create', 'edit_own'],
+        
+        # Error & Log Management
+        'error_logs': ['manage'],
+        'system_logs': ['monitor'],
+        
+        # Categories & Subcategories
+        'categories': ['create', 'delete', 'subcategories'],
+        'subcategories': ['create', 'delete'],
+        
+        # Profile Management (Legacy)
+        'profile': ['view_own', 'edit_own', 'view_other', 'edit_other'],
+        
+        # Wallet & Financial Management
+        'wallet': ['view', 'manage', 'withdraw', 'view_transactions'],
+        'wallet_admin': ['view_all', 'manage_all', 'process_withdrawals', 'view_analytics'],
+        'earnings': ['view', 'sync', 'manage'],
+        'withdrawals': ['request', 'cancel', 'view_own'],
+        'transactions': ['view_own', 'view_all']
     }
     
     if category not in resource_actions:
@@ -529,12 +587,112 @@ def get_role_user_count(role_id):
 def get_role_permission_count(role_id):
     """Get permission count for a specific role"""
     role = Role.query.get_or_404(role_id)
+    
+    # Calculate granted permissions
+    granted_count = 0
     if role.permissions:
-        # Count total permissions across all resources
-        count = sum(len(actions) for actions in role.permissions.values())
-    else:
-        count = 0
-    return jsonify({'count': count})
+        granted_count = sum(len(actions) for actions in role.permissions.values())
+    
+    # Calculate total available permissions from resource_actions
+    resource_actions = {
+        # Core User Management
+        'users': ['create', 'delete', 'manage_roles', 'toggle_status', 'verify_email', 'view', 'edit', 'assign_roles'],
+        'roles': ['create', 'delete', 'view', 'edit', 'manage_permissions'],
+        
+        # Business Logic
+        'deals': ['create', 'delete', 'manage_status', 'send_messages', 'view', 'edit'],
+        'items': ['create', 'delete', 'verify', 'manage_categories', 'view', 'edit'],
+        'needs': ['create', 'delete', 'verify'],
+        'profiles': ['create', 'delete', 'manage', 'view_private', 'view_about_own', 'view_about_others', 'view_activity_own', 'view_activity_others'],
+        'organizations': ['create', 'delete', 'manage_members', 'verify', 'view', 'edit', 'join', 'view_private', 'view_about_own', 'view_about_others', 'view_members_own', 'view_members_others', 'view_activity_own', 'view_activity_others'],
+        'organization_types': ['create', 'delete'],
+        
+        # AI & Matching
+        'ai_matching': ['access_dashboard', 'access_engine', 'generate_recommendations', 'manage_matches'],
+        'ai_recommendations': ['create', 'delete', 'rate', 'view_reports'],
+        
+        # Banks & Data
+        'banks': ['create', 'delete', 'manage_content', 'view', 'edit', 'use'],
+        'data_collectors': ['create', 'delete', 'run', 'monitor', 'test', 'toggle', 'logs', 'data'],
+        'data_collection': ['create', 'delete', 'manage'],
+        'collectors': ['create', 'delete', 'run', 'view', 'edit'],
+        
+        # Content Management System
+        'cms': ['create', 'delete', 'manage_pages', 'manage_blocks', 'manage_navigation', 'dashboard'],
+        'pages': ['create', 'delete', 'publish', 'preview', 'toggle', 'builder', 'widgets'],
+        'content_blocks': ['create', 'delete', 'toggle'],
+        'navigation': ['create', 'delete', 'toggle'],
+        'email_templates': ['create', 'delete'],
+        
+        # Dynamic Configuration
+        'dynamic_buttons': ['create', 'delete'],
+        'item_types': ['create', 'delete'],
+        'data_mappings': ['create', 'delete'],
+        
+        # Chatbot System
+        'chatbots': ['create', 'delete', 'manage_flows', 'manage_questions', 'manage_responses', 'view', 'edit'],
+        'chatbot_flows': ['create', 'delete', 'duplicate', 'toggle', 'responses', 'analytics'],
+        'chatbot_questions': ['create', 'delete'],
+        'chatbot_responses': ['create', 'delete'],
+        'step_blocks': ['create', 'delete', 'questions'],
+        'chatbot': ['use'],
+        
+        # Analytics & Reports
+        'analytics': ['advanced_analytics', 'realtime_analytics', 'ab_testing', 'events', 'view', 'use'],
+        'reports': ['generate', 'view_all', 'export', 'comprehensive', 'overview', 'user_activity', 'system_performance', 'business_metrics', 'security_events', 'ab_test_results'],
+        'performance_metrics': ['monitor'],
+        'ab_tests': ['create', 'delete', 'run'],
+        
+        # System Management
+        'system_settings': ['view', 'edit'],
+        'verifications': ['approve', 'reject', 'manage'],
+        'notifications': ['create', 'delete', 'send'],
+        'feedback': ['manage', 'respond'],
+        'settings': ['manage'],
+        'dashboard': ['view'],
+        'admin': ['access'],
+        'logs': ['view'],
+        
+        # API & Integration
+        'api': ['access', 'manage_keys', 'monitor_usage'],
+        'integrations': ['create', 'delete', 'test'],
+        
+        # Security & Monitoring
+        'security': ['monitor', 'manage_incidents', 'audit_logs'],
+        'monitoring': ['system_health', 'performance', 'errors'],
+        'system_health': ['monitor', 'detailed'],
+        
+        # Scoring System
+        'scoring': ['manage', 'visibility', 'credibility', 'review', 'recalculate'],
+        'scoring_management': ['access', 'visibility', 'credibility', 'review'],
+        
+        # Admin Dashboard
+        'admin_dashboard': ['access', 'view_stats', 'manage_stats'],
+        'admin_management': ['access', 'users', 'roles', 'deals', 'verifications'],
+        
+        # Communication
+        'messaging': ['send', 'view_own'],
+        'reviews': ['create', 'edit_own'],
+        
+        # Error & Log Management
+        'error_logs': ['manage'],
+        'system_logs': ['monitor'],
+        
+        # Categories & Subcategories
+        'categories': ['create', 'delete', 'subcategories'],
+        'subcategories': ['create', 'delete'],
+        
+        # Profile Management (Legacy)
+        'profile': ['view_own', 'edit_own', 'view_other', 'edit_other']
+    }
+    
+    total_count = sum(len(actions) for actions in resource_actions.values())
+    
+    return jsonify({
+        'granted': granted_count,
+        'total': total_count,
+        'count': granted_count  # Keep for backward compatibility
+    })
 
 @admin_bp.route('/roles/create', methods=['GET', 'POST'])
 @login_required
@@ -641,6 +799,105 @@ def reject_item(item_id):
     
     return jsonify({'success': True, 'message': 'Item rejected and deleted'})
 
+@admin_bp.route('/items/<int:item_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_item_admin(item_id):
+    """Admin route to delete any item with cascading deletion"""
+    item = Item.query.get_or_404(item_id)
+    
+    try:
+        # Create notification for the item owner
+        notification = Notification(
+            user_id=item.profile.user_id,
+            title="Item Deleted by Admin",
+            message=f"Your item '{item.title}' was deleted by an administrator.",
+            notification_type="item_deleted",
+            data={'item_id': item.id}
+        )
+        db.session.add(notification)
+        
+        # Delete all related records first (cascading deletion)
+        from models import ItemCredibilityScore, ItemReviewScore, ItemVisibilityScore
+        from utils.file_cleanup import delete_item_files
+        
+        # Delete associated files first
+        file_cleanup_result = delete_item_files(item)
+        if file_cleanup_result['success']:
+            print(f"✅ Admin deleted {file_cleanup_result['total_deleted']} files for item {item_id}")
+        else:
+            print(f"⚠️ Admin file cleanup had issues: {file_cleanup_result.get('error', 'Unknown error')}")
+        
+        # Delete credibility scores
+        ItemCredibilityScore.query.filter_by(item_id=item_id).delete()
+        
+        # Delete review scores
+        ItemReviewScore.query.filter_by(item_id=item_id).delete()
+        
+        # Delete visibility scores
+        ItemVisibilityScore.query.filter_by(item_id=item_id).delete()
+        
+        # Finally delete the item itself
+        db.session.delete(item)
+        db.session.commit()
+        
+        if request.is_json:
+            return jsonify({'success': True, 'message': 'Item deleted successfully'})
+        
+        flash('Item deleted successfully', 'success')
+        return redirect(url_for('admin.index'))
+        
+    except Exception as e:
+        db.session.rollback()
+        if request.is_json:
+            return jsonify({'success': False, 'error': str(e)})
+        
+        flash(f'Error deleting item: {str(e)}', 'error')
+        return redirect(url_for('admin.index'))
+
+@admin_bp.route('/cleanup-orphaned-files', methods=['POST'])
+@login_required
+@admin_required
+def cleanup_orphaned_files():
+    """Admin route to clean up orphaned files"""
+    try:
+        from utils.file_cleanup import cleanup_orphaned_files
+        import os
+        
+        # Get orphaned files info
+        result = cleanup_orphaned_files()
+        
+        if not result['success']:
+            return jsonify({'success': False, 'error': result['error']})
+        
+        orphaned_files = result['orphaned_files']
+        upload_folder = current_app.config['UPLOAD_FOLDER']
+        
+        # Delete orphaned files
+        deleted_count = 0
+        failed_count = 0
+        
+        for filename in orphaned_files:
+            file_path = os.path.join(upload_folder, filename)
+            try:
+                os.remove(file_path)
+                deleted_count += 1
+                print(f"✅ Deleted orphaned file: {filename}")
+            except Exception as e:
+                failed_count += 1
+                print(f"❌ Failed to delete orphaned file {filename}: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Cleanup complete: {deleted_count} files deleted, {failed_count} failed',
+            'deleted_count': deleted_count,
+            'failed_count': failed_count,
+            'total_orphaned': len(orphaned_files)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @admin_bp.route('/analytics')
 @login_required
 @admin_required
@@ -665,6 +922,240 @@ def analytics():
     }
     
     return render_template('admin/analytics.html', analytics=analytics_data)
+
+@admin_bp.route('/interaction-analytics')
+@login_required
+@admin_required
+def interaction_analytics():
+    """View item interaction analytics"""
+    from datetime import datetime, timedelta
+    from models import ItemInteraction
+    
+    # Get date range from query params
+    days = int(request.args.get('days', 7))
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=days)
+    
+    # Get interaction data
+    interactions = ItemInteraction.query.filter(
+        ItemInteraction.created_at >= start_date,
+        ItemInteraction.created_at <= end_date
+    ).order_by(ItemInteraction.created_at.desc()).all()
+    
+    # Get interaction statistics
+    total_interactions = len(interactions)
+    
+    # Interaction types breakdown
+    interaction_types = {}
+    for interaction in interactions:
+        interaction_types[interaction.interaction_type] = interaction_types.get(interaction.interaction_type, 0) + 1
+    
+    # Source breakdown
+    sources = {}
+    for interaction in interactions:
+        sources[interaction.source] = sources.get(interaction.source, 0) + 1
+    
+    # Most viewed items
+    item_views = {}
+    for interaction in interactions:
+        if interaction.interaction_type == 'view':
+            item_views[interaction.item_id] = item_views.get(interaction.item_id, 0) + 1
+    
+    # Get top viewed items with details
+    top_items = []
+    for item_id, view_count in sorted(item_views.items(), key=lambda x: x[1], reverse=True)[:10]:
+        item = Item.query.get(item_id)
+        if item:
+            top_items.append({
+                'item': item,
+                'view_count': view_count
+            })
+    
+    # Get all users for template use
+    all_users = {user.id: user for user in User.query.all()}
+    all_items = {item.id: item for item in Item.query.all()}
+    all_profiles = {profile.id: profile for profile in Profile.query.all()}
+    
+    # User interaction data (logged in users only)
+    user_interactions = {}
+    for interaction in interactions:
+        if interaction.user_id:
+            user_interactions[interaction.user_id] = user_interactions.get(interaction.user_id, 0) + 1
+    
+    # Get top active users
+    top_users = []
+    for user_id, interaction_count in sorted(user_interactions.items(), key=lambda x: x[1], reverse=True)[:10]:
+        user = User.query.get(user_id)
+        if user:
+            top_users.append({
+                'user': user,
+                'interaction_count': interaction_count
+            })
+    
+    # Anonymous vs logged in breakdown
+    logged_in_interactions = len([i for i in interactions if i.user_id])
+    anonymous_interactions = total_interactions - logged_in_interactions
+    
+    analytics_data = {
+        'total_interactions': total_interactions,
+        'interaction_types': interaction_types,
+        'sources': sources,
+        'top_items': top_items,
+        'top_users': top_users,
+        'logged_in_interactions': logged_in_interactions,
+        'anonymous_interactions': anonymous_interactions,
+        'date_range': f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
+        'interactions': interactions[:50],  # Latest 50 interactions
+        'all_users': all_users,
+        'all_items': all_items,
+        'all_profiles': all_profiles
+    }
+    
+    return render_template('admin/interaction_analytics.html', analytics=analytics_data)
+
+@admin_bp.route('/interaction-analytics/item/<int:item_id>')
+@login_required
+@admin_required
+def item_interaction_history(item_id):
+    """View detailed interaction history for a specific item"""
+    from models import ItemInteraction
+    
+    # Get the item
+    item = Item.query.get_or_404(item_id)
+    
+    # Get all interactions for this item
+    interactions = ItemInteraction.query.filter_by(item_id=item_id)\
+        .order_by(ItemInteraction.created_at.desc()).all()
+    
+    # Get interaction statistics
+    total_interactions = len(interactions)
+    
+    # Interaction types breakdown for this item
+    interaction_types = {}
+    for interaction in interactions:
+        interaction_types[interaction.interaction_type] = interaction_types.get(interaction.interaction_type, 0) + 1
+    
+    # User interaction data
+    user_interactions = {}
+    for interaction in interactions:
+        if interaction.user_id:
+            user_interactions[interaction.user_id] = user_interactions.get(interaction.user_id, 0) + 1
+    
+    # Get top users for this item
+    top_users = []
+    for user_id, interaction_count in sorted(user_interactions.items(), key=lambda x: x[1], reverse=True)[:10]:
+        user = User.query.get(user_id)
+        if user:
+            top_users.append({
+                'user': user,
+                'interaction_count': interaction_count
+            })
+    
+    # Anonymous vs logged in breakdown
+    logged_in_interactions = len([i for i in interactions if i.user_id])
+    anonymous_interactions = total_interactions - logged_in_interactions
+    
+    # Get all users and profiles for template use
+    all_users = {user.id: user for user in User.query.all()}
+    all_profiles = {profile.id: profile for profile in Profile.query.all()}
+    
+    analytics_data = {
+        'item': item,
+        'total_interactions': total_interactions,
+        'interaction_types': interaction_types,
+        'top_users': top_users,
+        'logged_in_interactions': logged_in_interactions,
+        'anonymous_interactions': anonymous_interactions,
+        'interactions': interactions,
+        'all_users': all_users,
+        'all_profiles': all_profiles
+    }
+    
+    return render_template('admin/item_interaction_history.html', analytics=analytics_data)
+
+@admin_bp.route('/interaction-analytics/profile/<int:profile_id>')
+@login_required
+@admin_required
+def profile_interaction_history(profile_id):
+    """View detailed interaction history for a specific profile"""
+    from models import ItemInteraction
+    
+    # Get the profile
+    profile = Profile.query.get_or_404(profile_id)
+    
+    # Get all items for this profile
+    profile_items = Item.query.filter_by(profile_id=profile_id).all()
+    item_ids = [item.id for item in profile_items]
+    
+    if not item_ids:
+        interactions = []
+    else:
+        # Get all interactions for items belonging to this profile
+        interactions = ItemInteraction.query.filter(ItemInteraction.item_id.in_(item_ids))\
+            .order_by(ItemInteraction.created_at.desc()).all()
+    
+    # Get interaction statistics
+    total_interactions = len(interactions)
+    
+    # Interaction types breakdown for this profile's items
+    interaction_types = {}
+    for interaction in interactions:
+        interaction_types[interaction.interaction_type] = interaction_types.get(interaction.interaction_type, 0) + 1
+    
+    # Item interaction breakdown
+    item_interactions = {}
+    for interaction in interactions:
+        item_interactions[interaction.item_id] = item_interactions.get(interaction.item_id, 0) + 1
+    
+    # Get top items for this profile
+    top_items = []
+    for item_id, interaction_count in sorted(item_interactions.items(), key=lambda x: x[1], reverse=True)[:10]:
+        item = Item.query.get(item_id)
+        if item:
+            top_items.append({
+                'item': item,
+                'interaction_count': interaction_count
+            })
+    
+    # User interaction data (who interacted with this profile's items)
+    user_interactions = {}
+    for interaction in interactions:
+        if interaction.user_id:
+            user_interactions[interaction.user_id] = user_interactions.get(interaction.user_id, 0) + 1
+    
+    # Get top users who interacted with this profile's items
+    top_users = []
+    for user_id, interaction_count in sorted(user_interactions.items(), key=lambda x: x[1], reverse=True)[:10]:
+        user = User.query.get(user_id)
+        if user:
+            top_users.append({
+                'user': user,
+                'interaction_count': interaction_count
+            })
+    
+    # Anonymous vs logged in breakdown
+    logged_in_interactions = len([i for i in interactions if i.user_id])
+    anonymous_interactions = total_interactions - logged_in_interactions
+    
+    # Get all users and items for template use
+    all_users = {user.id: user for user in User.query.all()}
+    all_items = {item.id: item for item in Item.query.all()}
+    
+    analytics_data = {
+        'profile': profile,
+        'total_interactions': total_interactions,
+        'interaction_types': interaction_types,
+        'top_items': top_items,
+        'top_users': top_users,
+        'logged_in_interactions': logged_in_interactions,
+        'anonymous_interactions': anonymous_interactions,
+        'interactions': interactions,
+        'profile_items': profile_items,
+        'all_users': all_users,
+        'all_items': all_items
+    }
+    
+    return render_template('admin/profile_interaction_history.html', analytics=analytics_data)
 
 
 # Chatbot Management Routes
@@ -3700,14 +4191,16 @@ def create_bank():
             
             bank = Bank(
                 name=data['name'],
+                slug=data['slug'],
                 description=data['description'],
                 bank_type=data['bank_type'],
                 item_type_id=data.get('item_type_id'),
                 organization_type_id=data.get('organization_type_id'),
                 user_filter=data.get('user_filter'),
+                privacy_filter=data.get('privacy_filter', 'all'),
                 organization_type=data.get('organization_type'),  # Keep for backward compatibility
                 icon=data.get('icon', 'fas fa-database'),
-                color=data.get('color', '#007bff'),
+                color=data.get('color', '#2988a8'),
                 sort_order=data.get('sort_order', 0),
                 is_public=data.get('is_public', True),
                 created_by=current_user.id
@@ -3735,15 +4228,17 @@ def create_bank():
     
     collectors = DataCollector.query.filter_by(is_active=True).all()
     
-    # Get item types and organization types for the form
-    from models import ItemType, OrganizationType
+    # Get item types, organization types, and profile types for the form
+    from models import ItemType, OrganizationType, ProfileType
     item_types = ItemType.query.filter_by(is_active=True).order_by(ItemType.display_name).all()
     organization_types = OrganizationType.query.filter_by(is_active=True).order_by(OrganizationType.display_name).all()
+    profile_types = ProfileType.query.filter_by(is_active=True).order_by(ProfileType.order_index.asc()).all()
     
     return render_template('admin/create_bank.html', 
                          collectors=collectors,
                          item_types=item_types,
-                         organization_types=organization_types)
+                         organization_types=organization_types,
+                         profile_types=profile_types)
 
 @admin_bp.route('/banks/<int:bank_id>/content')
 @admin_required
@@ -3764,11 +4259,13 @@ def edit_bank(bank_id):
         data = request.get_json()
         
         bank.name = data.get('name', bank.name)
+        bank.slug = data.get('slug', bank.slug)
         bank.description = data.get('description', bank.description)
         bank.bank_type = data.get('bank_type', bank.bank_type)
         bank.item_type_id = data.get('item_type_id', bank.item_type_id)
         bank.organization_type_id = data.get('organization_type_id', bank.organization_type_id)
         bank.user_filter = data.get('user_filter', bank.user_filter)
+        bank.privacy_filter = data.get('privacy_filter', bank.privacy_filter)
         bank.organization_type = data.get('organization_type', bank.organization_type)  # Keep for backward compatibility
         bank.icon = data.get('icon', bank.icon)
         bank.color = data.get('color', bank.color)
@@ -3783,15 +4280,17 @@ def edit_bank(bank_id):
             db.session.rollback()
             return jsonify({'success': False, 'message': str(e)})
     
-    # Get item types and organization types for the form
-    from models import ItemType, OrganizationType
+    # Get item types, organization types, and profile types for the form
+    from models import ItemType, OrganizationType, ProfileType
     item_types = ItemType.query.filter_by(is_active=True).order_by(ItemType.display_name).all()
     organization_types = OrganizationType.query.filter_by(is_active=True).order_by(OrganizationType.display_name).all()
+    profile_types = ProfileType.query.filter_by(is_active=True).order_by(ProfileType.order_index.asc()).all()
     
     return render_template('admin/edit_bank.html', 
                          bank=bank,
                          item_types=item_types,
-                         organization_types=organization_types)
+                         organization_types=organization_types,
+                         profile_types=profile_types)
 
 @admin_bp.route('/banks/<int:bank_id>/delete', methods=['POST'])
 @admin_required
@@ -4013,7 +4512,7 @@ def create_organization_type():
         display_name = data.get('display_name')
         description = data.get('description', '')
         icon_class = data.get('icon_class', 'fas fa-building')
-        color_class = data.get('color_class', 'primary')
+        color_class = data.get('color_class', '#2988a8')
         max_profiles_per_user = int(data.get('max_profiles_per_user', 10))
         # Handle both string and boolean values for checkboxes
         requires_verification = data.get('requires_verification', False)
@@ -4555,3 +5054,147 @@ def delete_profile(profile_id):
         return jsonify({'success': True, 'message': 'Profile deleted successfully'})
     flash('Profile deleted successfully', 'success')
     return redirect(url_for('admin.profiles_management'))
+
+
+# ==================== WALLET ADMIN ROUTES ====================
+
+@admin_bp.route('/wallet-management')
+@login_required
+@require_permission('wallet_admin', 'view_all')
+def wallet_management():
+    """Admin wallet management dashboard"""
+    from models import Wallet, WithdrawalRequest, WalletTransaction
+    from utils.wallet_service import WalletService
+    
+    # Get wallet statistics
+    total_wallets = Wallet.query.count()
+    active_wallets = Wallet.query.filter_by(is_active=True).count()
+    
+    # Get total balance across all wallets
+    total_balance = db.session.query(db.func.sum(Wallet.balance)).scalar() or 0
+    
+    # Get pending withdrawal requests
+    pending_withdrawals = WithdrawalRequest.query.filter_by(status='pending').count()
+    
+    # Get recent withdrawal requests
+    recent_withdrawals = WithdrawalRequest.query.order_by(WithdrawalRequest.created_at.desc()).limit(10).all()
+    
+    # Get recent transactions
+    recent_transactions = WalletTransaction.query.order_by(WalletTransaction.created_at.desc()).limit(10).all()
+    
+    stats = {
+        'total_wallets': total_wallets,
+        'active_wallets': active_wallets,
+        'total_balance': total_balance,
+        'pending_withdrawals': pending_withdrawals
+    }
+    
+    return render_template('admin/wallet_management.html',
+                         stats=stats,
+                         recent_withdrawals=recent_withdrawals,
+                         recent_transactions=recent_transactions)
+
+
+@admin_bp.route('/withdrawal-requests')
+@login_required
+@require_permission('wallet_admin', 'process_withdrawals')
+def withdrawal_requests():
+    """View all withdrawal requests"""
+    from models import WithdrawalRequest
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Get withdrawal requests with pagination
+    withdrawals = WithdrawalRequest.query.order_by(WithdrawalRequest.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin/withdrawal_requests.html', withdrawals=withdrawals)
+
+
+@admin_bp.route('/process-withdrawal/<int:withdrawal_id>', methods=['POST'])
+@login_required
+@require_permission('wallet_admin', 'process_withdrawals')
+def process_withdrawal(withdrawal_id):
+    """Process a withdrawal request (approve/reject)"""
+    from models import WithdrawalRequest
+    from utils.wallet_service import WalletService
+    
+    withdrawal_request = WithdrawalRequest.query.get_or_404(withdrawal_id)
+    
+    data = request.get_json() if request.is_json else request.form
+    action = data.get('action')  # 'approve' or 'reject'
+    admin_notes = data.get('admin_notes', '')
+    
+    if action not in ['approve', 'reject']:
+        return jsonify({'success': False, 'message': 'Invalid action'})
+    
+    # Process the withdrawal
+    success = WalletService.process_withdrawal(
+        withdrawal_request_id=withdrawal_request.id,
+        admin_id=current_user.id,
+        approved=(action == 'approve'),
+        admin_notes=admin_notes
+    )
+    
+    if success:
+        message = f'Withdrawal {action}d successfully'
+        if request.is_json:
+            return jsonify({'success': True, 'message': message})
+        flash(message, 'success')
+    else:
+        message = f'Error processing withdrawal request'
+        if request.is_json:
+            return jsonify({'success': False, 'message': message})
+        flash(message, 'error')
+    
+    return redirect(url_for('admin.withdrawal_requests'))
+
+
+@admin_bp.route('/wallet-transactions')
+@login_required
+@require_permission('transactions', 'view_all')
+def wallet_transactions():
+    """View all wallet transactions"""
+    from models import WalletTransaction
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Get transactions with pagination
+    transactions = WalletTransaction.query.order_by(WalletTransaction.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin/wallet_transactions.html', transactions=transactions)
+
+
+@admin_bp.route('/user-wallet/<int:user_id>')
+@login_required
+@require_permission('wallet_admin', 'view_all')
+def user_wallet_detail(user_id):
+    """View detailed wallet information for a specific user"""
+    from models import User, Wallet
+    from utils.wallet_service import WalletService
+    
+    user = User.query.get_or_404(user_id)
+    
+    # Get wallet summary
+    summary = WalletService.get_wallet_summary(user.id)
+    
+    # Get all transactions
+    transactions = summary['wallet'].transactions.order_by(
+        WalletTransaction.created_at.desc()
+    ).limit(50).all()
+    
+    # Get all withdrawal requests
+    withdrawal_requests = WithdrawalRequest.query.filter_by(
+        user_id=user.id
+    ).order_by(WithdrawalRequest.created_at.desc()).all()
+    
+    return render_template('admin/user_wallet_detail.html',
+                         user=user,
+                         summary=summary,
+                         transactions=transactions,
+                         withdrawal_requests=withdrawal_requests)

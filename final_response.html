@@ -1,0 +1,1311 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - BankU</title>
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <!-- Font Awesome Fallback -->
+    <script>
+        // Check if Font Awesome loaded
+        setTimeout(function() {
+            if (!document.querySelector('.fa, .fas, .far, .fab')) {
+                console.log('Font Awesome not loaded, trying fallback...');
+                // Try alternative CDN
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'https://use.fontawesome.com/releases/v6.0.0/css/all.css';
+                document.head.appendChild(link);
+            }
+        }, 1000);
+    </script>
+    <!-- Custom CSS -->
+    <link href="/static/css/style.css" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="alternate icon" href="/static/favicon.svg">
+    
+    
+</head>
+<body class="animate-fadeInUp">
+    <!-- Flash Messages -->
+    
+        
+            <div class="container-fluid px-0" style="margin-top: 80px; position: relative; z-index: 1000;">
+                <div class="container">
+                    
+                        <div class="alert alert-message alert-dismissible fade show mt-2" role="alert">
+                            Please log in to access this page.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    
+                </div>
+            </div>
+        
+    
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-university me-2"></i>BankU
+            </a>
+            
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    
+                        <li class="nav-item">
+                            <a class="nav-link" href="/dashboard/">
+                                <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        
+                        <!-- Banks Menu -->
+                        
+                        
+                            
+                                
+                            
+                        
+                        
+                            <li class="nav-item">
+                                <a class="nav-link" href="/banks/">
+                                    <i class="fas fa-university me-1"></i>Banks
+                                </a>
+                            </li>
+                        
+                        
+                        <!-- AI Matcher Menu -->
+                        
+                        
+                            
+                                
+                            
+                        
+                        
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="aiMatcherDropdown" role="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-brain me-1"></i>AI Matcher
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="/ai-matching/">
+                                        <i class="fas fa-tachometer-alt me-2"></i>Matcher Dashboard
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="/ai-matching/ai-engine">
+                                        <i class="fas fa-cogs me-2"></i>AI Engine
+                                    </a></li>
+                                </ul>
+                            </li>
+                        
+                        
+                        <!-- Organizations Menu -->
+                        
+                        
+                            
+                                
+                            
+                        
+                        
+                            <li class="nav-item">
+                                <a class="nav-link" href="/organizations">
+                                    <i class="fas fa-building me-1"></i>Organizations
+                                </a>
+                            </li>
+                        
+                        
+                        <!-- Profiles Menu -->
+                        
+                        
+                            
+                                
+                            
+                        
+                        
+                            <li class="nav-item">
+                                <a class="nav-link" href="/profiles/">
+                                    <i class="fas fa-user-circle me-1"></i>My Profiles
+                                </a>
+                            </li>
+                        
+                        
+                        <!-- Deals Menu -->
+                        
+                        
+                            
+                                
+                                    
+                                
+                                
+                                    
+                                
+                            
+                        
+                        
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="dealsDropdown" role="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-university me-1"></i>Deals
+                                </a>
+                                <ul class="dropdown-menu">
+                                    
+                                        <li><a class="dropdown-item" href="/deals/">
+                                            <i class="fas fa-list me-2"></i>My Deals
+                                        </a></li>
+                                    
+                                    
+                                        <li><a class="dropdown-item" href="/deals/create">
+                                            <i class="fas fa-plus me-2"></i>Create Deal
+                                        </a></li>
+                                    
+                                </ul>
+                            </li>
+                        
+                        
+                            
+                                
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="/admin/">
+                                            <i class="fas fa-cog me-1"></i>Admin
+                                        </a>
+                                    </li>
+                                
+                            
+                        
+                    
+                </ul>
+                
+                <ul class="navbar-nav">
+                    
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="notificationsDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-bell me-1"></i>
+                                
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><h6 class="dropdown-header">Notifications</h6></li>
+                                
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-center" href="/dashboard/notifications">View All</a></li>
+                            </ul>
+                        </li>
+                        <!-- Dark Mode Toggle -->
+                        <li class="nav-item">
+                            <button type="button" class="btn dark-mode-toggle" id="darkModeToggle" title="Toggle Dark Mode">
+                                <i class="fas fa-moon" id="darkModeIcon"></i>
+                            </button>
+                        </li>
+                        
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                
+                                    <img src="/static/uploads/3_c876db2e307a4b93afe39b4348a013b1.jpg" 
+                                         alt="Profile Photo" class="rounded-circle me-2" 
+                                         style="width: 32px; height: 32px; object-fit: cover;">
+                                
+                                System
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="/auth/profile">
+                                    <i class="fas fa-user me-2"></i>Profile
+                                </a></li>
+                                <li><a class="dropdown-item" href="/auth/settings">
+                                    <i class="fas fa-cog me-2"></i>Settings
+                                </a></li>
+                                <li><a class="dropdown-item" href="/auth/verification">
+                                    <i class="fas fa-shield-alt me-2"></i>Verification
+                                    
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="/auth/logout">
+                                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                </a></li>
+                            </ul>
+                        </li>
+                    
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid" style="margin-top: 80px;">
+        
+<div class="container-fluid py-4">
+    <!-- Welcome Section - Match Stats Width -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-center">
+                <div class="welcome-compact">
+                    <div class="text-center">
+                        <h2 class="welcome-title mb-1">
+                            Welcome back, System! 👋
+                        </h2>
+                        <p class="welcome-subtitle mb-0">
+                            Here's what's happening with your BankU account today.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards - Inline Responsive -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+                <div class="stat-card-inline">
+                <div class="d-flex align-items-center">
+                        <div class="stat-icon-compact bg-gradient-primary text-white me-2">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <div>
+                            <div class="stat-number-compact">0</div>
+                            <div class="stat-label-compact">Total Views</div>
+                        </div>
+            </div>
+        </div>
+        
+                <div class="stat-card-inline">
+                <div class="d-flex align-items-center">
+                        <div class="stat-icon-compact bg-gradient-success text-white me-2">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <div>
+                            <div class="stat-number-compact">0</div>
+                            <div class="stat-label-compact">Active Deals</div>
+                        </div>
+            </div>
+        </div>
+        
+                <div class="stat-card-inline">
+                <div class="d-flex align-items-center">
+                        <div class="stat-icon-compact bg-gradient-warning text-white me-2">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div>
+                            <div class="stat-number-compact">0</div>
+                            <div class="stat-label-compact">Pending Deals</div>
+                        </div>
+            </div>
+        </div>
+        
+                <div class="stat-card-inline">
+                <div class="d-flex align-items-center">
+                        <div class="stat-icon-compact bg-gradient-info text-white me-2">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div>
+                            <div class="stat-number-compact">$0.00</div>
+                            <div class="stat-label-compact">Total Earnings</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Cards - Centered and Close -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="text-center mb-4">
+                <h3 class="fw-bold mb-0">Quick Actions</h3>
+                <p class="text-muted small">Choose an action to get started</p>
+            </div>
+        </div>
+        
+        <div class="col-12">
+            <div class="d-flex flex-wrap justify-content-center gap-4 quick-actions-grid">
+        
+            
+                    <div class="action-card-square" data-url="
+    
+        /profiles/create-item
+    
+" onclick="navigateToUrl(this)">
+                        <div class="action-icon-square">
+                        <i class="fas fa-plus-circle"></i>
+                        </div>
+                        <h5 class="action-title-square">Add New</h5>
+                        <p class="action-description-square">Create a new item or service</p>
+            </div>
+            
+                    <div class="action-card-square" data-url="
+    
+        /chatbot/19
+    
+" onclick="navigateToUrl(this)">
+                        <div class="action-icon-square">
+                        <i class="fas fa-shopping-basket "></i>
+                        </div>
+                        <h5 class="action-title-square">Add Need</h5>
+                        <p class="action-description-square">Post what you need or are looking for</p>
+            </div>
+            
+                    <div class="action-card-square" data-url="
+    
+        /profiles/create
+    
+" onclick="navigateToUrl(this)">
+                        <div class="action-icon-square">
+                        <i class="fas fa-user-circle"></i>
+                        </div>
+                        <h5 class="action-title-square">Add Profile</h5>
+                        <p class="action-description-square">Create New Personal Profile</p>
+            </div>
+            
+                    <div class="action-card-square" data-url="
+    
+        /organizations/create
+    
+" onclick="navigateToUrl(this)">
+                        <div class="action-icon-square">
+                        <i class="fas fa-building"></i>
+                        </div>
+                        <h5 class="action-title-square">New Organization</h5>
+                        <p class="action-description-square">Create a company, team, or project organization</p>
+            </div>
+            
+        
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Notifications -->
+    
+</div>
+
+
+<style>
+/* Dashboard Specific Styles */
+.avatar-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* Compact Welcome Section - Match Stats Width */
+.welcome-compact {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid var(--gray-200);
+    width: 836px; /* Match 4 stats buttons width on desktop (200px × 4 + 36px gaps) */
+    max-width: 836px;
+}
+
+
+.welcome-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0;
+}
+
+.welcome-subtitle {
+    font-size: 0.95rem;
+    color: var(--gray-600);
+    margin: 0;
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+/* Compact Stats Cards */
+.stat-card-compact {
+    background: white;
+    border-radius: 16px;
+    padding: 0.75rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s ease;
+}
+
+.stat-card-compact:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Half Width Compact Stats Cards */
+.stat-card-compact-half {
+    background: white;
+    border-radius: 16px;
+    padding: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s ease;
+    max-width: 50%;
+    margin: 0 auto;
+}
+
+.stat-card-compact-half:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Inline Responsive Stats Cards */
+.stat-card-inline {
+    background: white;
+    border-radius: 16px;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s ease;
+    min-width: 200px;
+    flex: 0 0 auto;
+}
+
+.stat-card-inline:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.stat-card-inline:hover .stat-icon-compact {
+    transform: scale(1.1);
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 1rem;
+    }
+    
+    .welcome-compact {
+        padding: 1rem;
+        width: 412px; /* Match 2 stats buttons width on tablet (200px × 2 + 12px gap) */
+        max-width: 412px;
+    }
+    
+    .welcome-title {
+        font-size: 1.25rem;
+    }
+    
+    .welcome-subtitle {
+        font-size: 0.85rem;
+    }
+    
+    
+    .stat-card-inline {
+        min-width: 140px;
+        padding: 0.6rem 0.8rem;
+        flex: 1 1 calc(50% - 0.5rem);
+        max-width: calc(50% - 0.5rem);
+    }
+    
+    .d-flex.flex-wrap {
+        gap: 0.5rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .container-fluid {
+        padding: 0.75rem;
+    }
+    
+    .welcome-compact {
+        padding: 0.75rem;
+        width: 100%; /* Match full width on mobile like stats */
+        max-width: 100%;
+    }
+    
+    .welcome-title {
+        font-size: 1.1rem;
+    }
+    
+    .welcome-subtitle {
+        font-size: 0.8rem;
+    }
+    
+    
+    .stat-card-inline {
+        min-width: 100%;
+        padding: 0.5rem 0.75rem;
+        flex: 1 1 100%;
+        max-width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-icon-compact {
+        width: 28px;
+        height: 28px;
+        border-radius: 25%; /* Even more pronounced rounded corners */
+        aspect-ratio: 1 / 1; /* Ensure it stays square */
+        font-size: 0.75rem;
+    }
+    
+    .stat-number-compact {
+        font-size: 0.9rem;
+    }
+    
+    .stat-label-compact {
+        font-size: 0.65rem;
+    }
+    
+    .d-flex.flex-wrap {
+        gap: 0.25rem !important;
+        flex-direction: column;
+    }
+    
+    
+    .text-center.mb-4 h3 {
+        font-size: 1.1rem;
+    }
+    
+    .text-center.mb-4 p {
+        font-size: 0.8rem;
+    }
+
+    /* Ensure quick action cards render 2 per row on mobile */
+    .quick-actions-grid .action-card-square {
+        width: calc(50% - 0.5rem);
+        max-width: calc(50% - 0.5rem);
+        flex: 1 1 calc(50% - 0.5rem);
+        height: 180px;
+    }
+    /* Override global flex column for quick actions grid to allow wrapping */
+    .quick-actions-grid {
+        flex-direction: row !important;
+        flex-wrap: wrap;
+    }
+}
+
+/* Tablet adjustments to prefer 2 per row as well */
+@media (max-width: 768px) and (min-width: 577px) {
+    .action-card-square {
+        width: calc(50% - 0.75rem);
+        max-width: calc(50% - 0.75rem);
+        flex: 1 1 calc(50% - 0.75rem);
+    }
+}
+
+/* Square Action Cards - Balanced sizing */
+.action-card-square {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid var(--gray-200);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    height: 200px;
+    width: 200px;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex: 0 0 auto;
+}
+
+/* Make all Bootstrap cards on dashboard rounded */
+.card {
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.action-card-square:hover .action-icon-square {
+    background: linear-gradient(135deg, #5a6fd8, #6a4190);
+    transform: scale(1.05);
+}
+
+.action-card-square:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.action-icon-square {
+    width: 100px;
+    height: 100px;
+    border-radius: 25%; /* Even more pronounced rounded corners */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white !important;
+    margin-bottom: 1rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    aspect-ratio: 1 / 1; /* Ensure it stays square */
+}
+
+.action-icon-square i {
+    color: white !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    font-size: 0.8em; /* Keep icon slightly smaller than its background */
+    line-height: 1;
+}
+
+.action-title-square {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 0.5rem;
+}
+
+.action-description-square {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    margin: 0;
+    line-height: 1.3;
+}
+
+/* Mobile-optimized action cards */
+@media (max-width: 992px) {
+    .action-card-square {
+        height: 160px;
+        width: 160px;
+        padding: 1rem;
+    }
+    
+    .action-icon-square {
+        width: 70px;
+        height: 70px;
+        border-radius: 25%; /* Even more pronounced rounded corners */
+        aspect-ratio: 1 / 1; /* Ensure it stays square */
+        font-size: 2.2rem;
+        margin-bottom: 0.6rem;
+    }
+    
+    .action-title-square {
+        font-size: 0.9rem;
+    }
+    
+    .action-description-square {
+        font-size: 0.75rem;
+    }
+    
+    .d-flex.flex-wrap {
+        gap: 0.8rem !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .action-card-square {
+        height: 140px;
+        width: 140px;
+        padding: 0.8rem;
+    }
+    
+    .action-icon-square {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .action-title-square {
+        font-size: 0.85rem;
+    }
+    
+    .action-description-square {
+        font-size: 0.7rem;
+    }
+    
+    .d-flex.flex-wrap {
+        gap: 0.6rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .action-card-square {
+        height: 120px;
+        width: 120px;
+        padding: 0.6rem;
+    }
+    
+    .action-icon-square {
+        width: 50px;
+        height: 50px;
+        font-size: 1.7rem;
+        margin-bottom: 0.3rem;
+    }
+    
+    .action-title-square {
+        font-size: 0.75rem;
+        line-height: 1.2;
+    }
+    
+    .action-description-square {
+        font-size: 0.6rem;
+        line-height: 1.3;
+    }
+    
+    .d-flex.flex-wrap {
+        gap: 0.5rem !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .welcome-compact {
+        width: 100%; /* Match full width on small mobile like stats */
+        max-width: 100%;
+    }
+    
+    .action-card-square {
+        height: 100px;
+        width: 100px;
+        padding: 0.5rem;
+    }
+    
+    .action-icon-square {
+        width: 40px;
+        height: 40px;
+        border-radius: 25%; /* Even more pronounced rounded corners */
+        aspect-ratio: 1 / 1; /* Ensure it stays square */
+        font-size: 1.5rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .action-title-square {
+        font-size: 0.7rem;
+        line-height: 1.1;
+    }
+    
+    .action-description-square {
+        font-size: 0.55rem;
+        line-height: 1.2;
+    }
+    
+    .d-flex.flex-wrap {
+        gap: 0.4rem !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+    }
+}
+
+@media (max-width: 360px) {
+    .welcome-compact {
+        width: 100%; /* Match full width on very small mobile like stats */
+        max-width: 100%;
+    }
+    
+    .action-card-square {
+        height: 90px;
+        width: 90px;
+        padding: 0.4rem;
+    }
+    
+    .action-icon-square {
+        width: 36px;
+        height: 36px;
+        border-radius: 25%; /* Even more pronounced rounded corners */
+        aspect-ratio: 1 / 1; /* Ensure it stays square */
+        font-size: 1.4rem;
+        margin-bottom: 0.2rem;
+    }
+    
+    .action-title-square {
+        font-size: 0.65rem;
+        line-height: 1.1;
+    }
+    
+    .action-description-square {
+        font-size: 0.5rem;
+        line-height: 1.1;
+    }
+    
+    .d-flex.flex-wrap {
+        gap: 0.3rem !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+    }
+}
+
+.stat-icon-compact {
+    width: 35px;
+    height: 35px;
+    border-radius: 25%; /* Even more pronounced rounded corners */
+    aspect-ratio: 1 / 1; /* Ensure it stays square */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    color: white !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.stat-icon-compact i {
+    color: white !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.stat-number-compact {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    line-height: 1;
+}
+
+.stat-label-compact {
+    font-size: 0.75rem;
+    color: var(--gray-600);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #28a745, #20c997) !important;
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #ffc107, #fd7e14) !important;
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #17a2b8, #6f42c1) !important;
+}
+
+.text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .display-6 {
+        font-size: 2rem;
+    }
+    
+    .stat-card {
+        margin-bottom: 1rem;
+    }
+    
+    .action-card {
+        margin-bottom: 1rem;
+    }
+}
+</style>
+
+<script>
+// Navigation function for action cards
+function navigateToUrl(element) {
+    const url = element.getAttribute('data-url');
+    if (url && url !== '#') {
+        window.location.href = url;
+    }
+}
+
+// Track page view
+document.addEventListener('DOMContentLoaded', function() {
+    // Track dashboard page view
+    fetch('/analytics/track', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            event_type: 'page_view',
+            event_name: 'dashboard',
+            properties: {
+                user_id: 3,
+                page: 'dashboard'
+            }
+        })
+    }).catch(console.error);
+    
+    // Track button clicks
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.action-card')) {
+            const button = e.target.closest('.action-card');
+            const buttonName = button.querySelector('.action-title')?.textContent || 'Unknown Button';
+            
+            fetch('/analytics/track', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    event_type: 'button_click',
+                    event_name: buttonName,
+                    properties: {
+                        user_id: 3,
+                        button_name: buttonName,
+                        page: 'dashboard'
+                    }
+                })
+            }).catch(console.error);
+        }
+    });
+    
+});
+</script>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>BankU</h5>
+                    <p>Your comprehensive banking and financial services platform.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>&copy; 2025 BankU. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="/static/js/main.js"></script>
+    
+    <!-- Dark Mode & Animations Script -->
+    <script>
+        // Dark Mode Toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const darkModeIcon = document.getElementById('darkModeIcon');
+            const html = document.documentElement;
+            
+            // Check for saved theme preference or default to light mode
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            html.setAttribute('data-theme', currentTheme);
+            
+            // Update icon based on current theme
+            if (currentTheme === 'dark') {
+                darkModeIcon.className = 'fas fa-sun';
+            } else {
+                darkModeIcon.className = 'fas fa-moon';
+            }
+            
+            // Toggle dark mode
+            darkModeToggle.addEventListener('click', function() {
+                const currentTheme = html.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                html.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                
+                // Update icon
+                if (newTheme === 'dark') {
+                    darkModeIcon.className = 'fas fa-sun';
+                } else {
+                    darkModeIcon.className = 'fas fa-moon';
+                }
+                
+                // Add transition effect
+                html.style.transition = 'background-color 0.3s ease, color 0.3s ease';
+                setTimeout(() => {
+                    html.style.transition = '';
+                }, 300);
+            });
+        });
+        
+        // Smooth animations on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+        
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-fadeInUp');
+                }
+            });
+        }, observerOptions);
+        
+        // Observe all cards and action elements
+        document.addEventListener('DOMContentLoaded', function() {
+            const elementsToAnimate = document.querySelectorAll('.card, .action-card, .stat-card');
+            elementsToAnimate.forEach(el => {
+                observer.observe(el);
+            });
+        });
+        
+        // Add loading states to buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.matches('.btn:not(.dark-mode-toggle)')) {
+                e.target.classList.add('loading');
+                setTimeout(() => {
+                    e.target.classList.remove('loading');
+                }, 1000);
+            }
+        });
+    </script>
+    
+    <!-- Floating Feedback Button -->
+    <div class="feedback-floating-btn" id="feedbackBtn" onclick="openFeedbackModal()">
+        <i class="fas fa-comment-dots"></i>
+        <span class="feedback-tooltip">Send Feedback</span>
+    </div>
+    
+    <!-- Feedback Modal -->
+    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="feedbackModalLabel">
+                        <i class="fas fa-comment-dots me-2"></i>Send Feedback
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="feedbackForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="feedbackType" class="form-label fw-bold">Type *</label>
+                                <select class="form-select" id="feedbackType" name="type" required>
+                                    <option value="">Select feedback type</option>
+                                    <option value="suggestion">💡 Suggestion</option>
+                                    <option value="problem">🐛 Report Problem</option>
+                                    <option value="request_deals">🤝 Request Make Deals on App</option>
+                                    <option value="request_call">📞 Request Call from Customer Service</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="feedbackPriority" class="form-label fw-bold">Priority</label>
+                                <select class="form-select" id="feedbackPriority" name="priority">
+                                    <option value="low">🟢 Low</option>
+                                    <option value="medium" selected>🟡 Medium</option>
+                                    <option value="high">🟠 High</option>
+                                    <option value="urgent">🔴 Urgent</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="feedbackSubject" class="form-label fw-bold">Subject *</label>
+                            <input type="text" class="form-control" id="feedbackSubject" name="subject" 
+                                   placeholder="Brief description of your feedback" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="feedbackMessage" class="form-label fw-bold">Message *</label>
+                            <textarea class="form-control" id="feedbackMessage" name="message" rows="5" 
+                                      placeholder="Please provide detailed information about your feedback..." required></textarea>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Thank you for your feedback!</strong> Your input helps us improve the app, fix issues, and better serve your needs.
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="submitFeedback()">
+                        <i class="fas fa-paper-plane me-1"></i>Send Feedback
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Feedback Styles -->
+    <style>
+        .feedback-floating-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0, 123, 255, 0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            animation: pulse 2s infinite;
+        }
+        
+        .feedback-floating-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(0, 123, 255, 0.4);
+        }
+        
+        .feedback-floating-btn i {
+            color: white;
+            font-size: 24px;
+        }
+        
+        .feedback-tooltip {
+            position: absolute;
+            right: 70px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .feedback-tooltip::after {
+            content: '';
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 6px solid transparent;
+            border-left-color: #333;
+        }
+        
+        .feedback-floating-btn:hover .feedback-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 4px 20px rgba(0, 123, 255, 0.3); }
+            50% { box-shadow: 0 4px 20px rgba(0, 123, 255, 0.6); }
+            100% { box-shadow: 0 4px 20px rgba(0, 123, 255, 0.3); }
+        }
+        
+        .feedback-success {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+        }
+        
+        .feedback-error {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+        }
+    </style>
+    
+    <!-- Feedback JavaScript -->
+    <script>
+        function openFeedbackModal() {
+            const modal = new bootstrap.Modal(document.getElementById('feedbackModal'));
+            modal.show();
+        }
+        
+        function submitFeedback() {
+            const form = document.getElementById('feedbackForm');
+            const formData = new FormData(form);
+            
+            // Validate form
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+            
+            // Show loading state
+            const submitBtn = document.querySelector('#feedbackModal .btn-primary');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Sending...';
+            submitBtn.disabled = true;
+            
+            // Submit feedback
+            fetch('/feedback/submit', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Success feedback
+                    const floatingBtn = document.getElementById('feedbackBtn');
+                    floatingBtn.classList.add('feedback-success');
+                    floatingBtn.innerHTML = '<i class="fas fa-check"></i>';
+                    
+                    // Show success message
+                    showFeedbackMessage('Thank you! Your feedback has been sent successfully.', 'success');
+                    
+                    // Reset form
+                    form.reset();
+                    form.classList.remove('was-validated');
+                    
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('feedbackModal'));
+                    modal.hide();
+                    
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        floatingBtn.classList.remove('feedback-success');
+                        floatingBtn.innerHTML = '<i class="fas fa-comment-dots"></i><span class="feedback-tooltip">Send Feedback</span>';
+                    }, 3000);
+                } else {
+                    showFeedbackMessage(data.message || 'Error sending feedback. Please try again.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showFeedbackMessage('Error sending feedback. Please try again.', 'error');
+            })
+            .finally(() => {
+                // Reset button
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+        
+        function showFeedbackMessage(message, type) {
+            // Create toast notification
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            // Add to page
+            document.body.appendChild(toast);
+            
+            // Show toast
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            // Remove after hiding
+            toast.addEventListener('hidden.bs.toast', () => {
+                document.body.removeChild(toast);
+            });
+        }
+    </script>
+    
+    
+</body>
+</html>

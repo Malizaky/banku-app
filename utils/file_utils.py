@@ -222,5 +222,136 @@ def get_all_categories() -> Dict:
     """
     return FILE_CATEGORIES.copy()
 
+def validate_uploaded_file_comprehensive(file, allowed_extensions=None, max_size=None, allowed_categories=None):
+    """
+    Comprehensive file validation with detailed error reporting.
+    
+    Args:
+        file: Flask file object
+        allowed_extensions: List of allowed file extensions (e.g., ['jpg', 'png'])
+        max_size: Maximum file size in bytes
+        allowed_categories: List of allowed file categories
+        
+    Returns:
+        Tuple of (is_valid, error_message, file_info)
+    """
+    try:
+        # Check if file exists
+        if not file or not hasattr(file, 'filename'):
+            return False, "No file provided", None
+        
+        if not file.filename:
+            return False, "Empty filename", None
+        
+        # Get file info
+        filename = file.filename
+        file_size = getattr(file, 'content_length', 0)
+        
+        # Check file size
+        if max_size and file_size > max_size:
+            return False, f"File too large. Maximum size: {format_file_size(max_size)}", None
+        
+        # Check extension
+        if allowed_extensions:
+            ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+            if ext not in [e.lower().lstrip('.') for e in allowed_extensions]:
+                return False, f"Invalid file type. Allowed extensions: {', '.join(allowed_extensions)}", None
+        
+        # Check category if specified
+        if allowed_categories:
+            category_key, category_info = get_file_category(filename)
+            if category_key not in allowed_categories:
+                return False, f"File type not allowed. Allowed categories: {', '.join(allowed_categories)}", None
+            
+            # Check category-specific size limit
+            if file_size > category_info['max_size']:
+                return False, f"File too large for {category_info['name']}. Maximum size: {format_file_size(category_info['max_size'])}", None
+        
+        # Security checks
+        if not is_filename_safe(filename):
+            return False, "Filename contains invalid characters", None
+        
+        # Get file info
+        category_key, category_info = get_file_category(filename)
+        file_info = {
+            'filename': filename,
+            'size': file_size,
+            'size_formatted': format_file_size(file_size),
+            'category': category_key,
+            'category_info': category_info
+        }
+        
+        return True, "File is valid", file_info
+        
+    except Exception as e:
+        return False, f"File validation error: {str(e)}", None
+
+def is_filename_safe(filename):
+    """
+    Check if filename is safe (no path traversal, special characters, etc.)
+    
+    Args:
+        filename: The filename to check
+        
+    Returns:
+        True if filename is safe, False otherwise
+    """
+    import re
+    
+    # Check for path traversal attempts
+    if '..' in filename or '/' in filename or '\\' in filename:
+        return False
+    
+    # Check for dangerous characters
+    dangerous_chars = ['<', '>', ':', '"', '|', '?', '*']
+    if any(char in filename for char in dangerous_chars):
+        return False
+    
+    # Check filename length
+    if len(filename) > 255:
+        return False
+    
+    # Check for empty or only whitespace
+    if not filename.strip():
+        return False
+    
+    return True
+
+def sanitize_filename(filename):
+    """
+    Sanitize filename to make it safe for storage.
+    
+    Args:
+        filename: Original filename
+        
+    Returns:
+        Sanitized filename
+    """
+    import re
+    import uuid
+    
+    # Remove path components
+    filename = os.path.basename(filename)
+    
+    # Remove dangerous characters
+    filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+    
+    # Remove multiple underscores
+    filename = re.sub(r'_+', '_', filename)
+    
+    # Remove leading/trailing underscores and dots
+    filename = filename.strip('_.')
+    
+    # Ensure filename is not empty
+    if not filename:
+        filename = f"file_{uuid.uuid4().hex[:8]}"
+    
+    # Truncate if too long
+    if len(filename) > 200:
+        name, ext = os.path.splitext(filename)
+        filename = name[:200-len(ext)] + ext
+    
+    return filename
+
 
 

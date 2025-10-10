@@ -80,22 +80,41 @@ def index():
                 # Show all items if no specific type configured
                 bank.item_count = Item.query.filter_by(is_available=True).count()
         elif bank.bank_type == 'organizations':
+            # Count organizations based on filter
+            base_query = Organization.query.filter_by(status='active')
+            
+            # Apply privacy filter
+            if bank.privacy_filter == 'public':
+                base_query = base_query.filter_by(is_public=True)
+            elif bank.privacy_filter == 'private':
+                base_query = base_query.filter_by(is_public=False)
+            # If privacy_filter is 'all', no additional filter
+            
+            # Apply organization type filter
             if bank.organization_type_id:
-                # Bank is configured for a specific organization type
-                bank.item_count = Organization.query.filter_by(
-                    organization_type_id=bank.organization_type_id,
-                    is_public=True,
-                    status='active'
-                ).count()
-            else:
-                # Show all organizations if no specific type configured
-                bank.item_count = Organization.query.filter_by(is_public=True, status='active').count()
+                base_query = base_query.filter_by(organization_type_id=bank.organization_type_id)
+            
+            bank.item_count = base_query.count()
         elif bank.bank_type == 'users':
             # Count users based on filter
-            if bank.user_filter == 'public':
-                bank.item_count = User.query.filter_by(is_active=True).count()  # Add public profile filter when available
+            if bank.user_filter:
+                base_query = User.query.join(Profile, User.id == Profile.user_id).filter(
+                    User.is_active == True,
+                    Profile.profile_type == bank.user_filter
+                )
             else:
-                bank.item_count = User.query.filter_by(is_active=True).count()
+                base_query = User.query.join(Profile, User.id == Profile.user_id).filter(
+                    User.is_active == True
+                )
+            
+            # Apply privacy filter
+            if bank.privacy_filter == 'public':
+                base_query = base_query.filter(Profile.is_public == True)
+            elif bank.privacy_filter == 'private':
+                base_query = base_query.filter(Profile.is_public == False)
+            # If privacy_filter is 'all', no additional filter
+            
+            bank.item_count = base_query.count()
         else:
             # Fallback to old system for backward compatibility
             category = category_map.get(bank.bank_type, bank.bank_type)
@@ -158,9 +177,12 @@ def get_category_color(category_name):
     return color_map.get(category_name, 'primary')
 
 
-@banks_bp.route('/<bank_type>')
+
+
+@banks_bp.route('/<bank_slug>')
 @login_required
-def bank_items(bank_type):
+def bank_items(bank_slug):
+    """Database-driven bank items with support for items, users, and organizations"""
     page = request.args.get('page', 1, type=int)
     per_page = 20
     search = request.args.get('search', '')
@@ -171,55 +193,78 @@ def bank_items(bank_type):
     sort_by = request.args.get('sort_by', 'created_at')
     sort_order = request.args.get('sort_order', 'desc')
     
-    # Map bank types to actual item types
-    bank_type_mapping = {
-        'items': 'all_items',  # Special case: show all items regardless of category
-        'products': 'product',
-        'services': 'service', 
-        'needs': 'need',  # Changed from 'idea' to 'need' to match your need items
-        'ideas': 'idea',
-        'projects': 'project',
-        'people': 'people',
-        'funders': 'fund',
-        'information': 'information',
-        'experiences': 'experience',
-        'opportunities': 'opportunity',
-        'events': 'event',
-        'auctions': 'auction',
-        'observations': 'observation',
-        'hidden_gems': 'hidden_gem',
-        # Product subcategories
-        'physical': 'product',
-        'digital': 'product',
-        'knowledge': 'product',
-        'rights_licenses': 'product',
-        'plans_strategies': 'product',
-        'imagination_innovations': 'product'
-    }
+    # Find bank by slug, name, or bank_type (OPTIMIZED - single query)
+    bank = Bank.query.filter(
+        Bank.is_active == True,
+        or_(
+            Bank.slug == bank_slug,
+            Bank.name == bank_slug,
+            Bank.bank_type == bank_slug
+        )
+    ).first()
     
-    actual_item_type = bank_type_mapping.get(bank_type, bank_type)
+    if not bank:
+        from flask import abort
+        abort(404, f"Bank '{bank_slug}' not found")
     
-    # Build query using smart filtering
+    # Handle different bank types
+    if bank.bank_type == 'users':
+        return handle_user_bank(bank, page, per_page, search, sort_by, sort_order)
+    elif bank.bank_type == 'organizations':
+        return handle_organization_bank(bank, page, per_page, search, sort_by, sort_order)
+    else:
+        # Default to items bank
+        return handle_item_bank(bank, page, per_page, search, category, location, min_price, max_price, sort_by, sort_order)
+
+def handle_item_bank(bank, page, per_page, search, category, location, min_price, max_price, sort_by, sort_order):
+    """Handle item banks"""
+    # Build query using simple join (FIXED PERFORMANCE ISSUE)
     query = Item.query.join(Profile).filter(Item.is_available == True)
     
-    # Apply smart filtering based on bank configuration
-    # First, get the bank to check if it has specific filtering configured
-    bank = Bank.query.filter_by(bank_type=bank_type).first()
+    # Apply smart filtering based on bank configuration (CORRECTED LOGIC)
+    if bank.item_type_id:
+        # CORRECT: Filter by ItemType ID - the core classification system
+        query = query.filter(Item.item_type_id == bank.item_type_id)
+    elif bank.subcategory:
+        # Fallback to old subcategory field
+        query = query.filter(Item.subcategory == bank.subcategory)
+    else:
+        # Use bank_type as fallback (EXACT SAME MAPPING AS OLD ROUTE)
+        bank_type_mapping = {
+            'items': 'all_items',  # Special case: show all items regardless of category
+            'products': 'product',
+            'services': 'service', 
+            'needs': 'need',  # Changed from 'idea' to 'need' to match your need items
+            'ideas': 'idea',
+            'projects': 'project',
+            'people': 'people',
+            'funders': 'fund',
+            'information': 'information',
+            'experiences': 'experience',
+            'opportunities': 'opportunity',
+            'events': 'event',
+            'auctions': 'auction',
+            'observations': 'observation',
+            'hidden_gems': 'hidden_gem',
+            # Product subcategories
+            'physical': 'product',
+            'digital': 'product',
+            'knowledge': 'product',
+            'rights_licenses': 'product',
+            'plans_strategies': 'product',
+            'imagination_innovations': 'product'
+        }
+        
+        actual_item_type = bank_type_mapping.get(bank.bank_type, bank.bank_type)
+        if actual_item_type != 'all_items':
+            # CORRECT: Filter by ItemType ID - the core classification system
+            query = query.filter(Item.item_type_id == bank.item_type_id)
     
-    if bank and bank.item_type_id:
-        # Bank is configured for a specific item type
-        item_type = ItemType.query.get(bank.item_type_id)
-        if item_type:
-            query = query.filter(Item.category == item_type.name)
-    elif actual_item_type != 'all_items':
-        # Fallback to old mapping system for backward compatibility
-        query = query.filter(Item.category == actual_item_type)
+    # If it's a product subcategory, filter by subcategory (EXACT SAME AS OLD ROUTE)
+    if bank.bank_type in ['physical', 'digital', 'knowledge', 'rights_licenses', 'plans_strategies', 'imagination_innovations']:
+        query = query.filter(Item.subcategory == bank.bank_type)
     
-    # If it's a product subcategory, filter by subcategory
-    if bank_type in ['physical', 'digital', 'knowledge', 'rights_licenses', 'plans_strategies', 'imagination_innovations']:
-        query = query.filter(Item.subcategory == bank_type)
-    
-    # Apply filters
+    # Apply filters (EXACT SAME AS OLD ROUTE)
     if search:
         query = query.filter(
             or_(
@@ -231,9 +276,9 @@ def bank_items(bank_type):
     if category:
         query = query.filter(Item.category == category)
     
-    # For products, add product category filtering
+    # For products, add product category filtering (EXACT SAME AS OLD ROUTE)
     product_category_id = request.args.get('product_category_id', type=int)
-    if bank_type == 'products' and product_category_id:
+    if bank.bank_type == 'products' and product_category_id:
         query = query.filter(Item.product_category_id == product_category_id)
     
     if location:
@@ -245,7 +290,7 @@ def bank_items(bank_type):
     if max_price is not None:
         query = query.filter(Item.price <= max_price)
     
-    # Apply sorting
+    # Apply sorting (EXACT SAME AS OLD ROUTE)
     if sort_by == 'price':
         if sort_order == 'asc':
             query = query.order_by(Item.price.asc())
@@ -262,60 +307,100 @@ def bank_items(bank_type):
         else:
             query = query.order_by(Item.created_at.desc())
     
-    # Add scoring data to the query
+    # Optimized: Only load essential relationships for bank listing
     query = query.options(
-        db.joinedload(Item.visibility_score),
-        db.joinedload(Item.credibility_score),
-        db.joinedload(Item.review_score)
+        db.joinedload(Item.profile),  # Essential for creator info
+        db.joinedload(Item.item_type)  # Essential for item type display
+        # Removed scoring relationships - not needed for bank listing
     )
     
     items = query.paginate(page=page, per_page=per_page, error_out=False)
     
-    # Debug: Log query details
-    print(f"DEBUG - Bank type: {bank_type}, Actual item type: {actual_item_type}")
-    print(f"DEBUG - Total items found: {items.total}")
-    print(f"DEBUG - Query filters: category={actual_item_type}, is_available=True")
+    # Debug logging removed for performance
     
-    # Get filter options
+    # Optimized: Get filter options with fewer database queries
+    if bank.item_type_id:
+        # Use the bank's item_type_id directly instead of querying ItemType
+        actual_item_type = 'filtered_by_item_type'
+    else:
+        # Use bank_type mapping
+        bank_type_mapping = {
+            'items': 'all_items',  # Special case: show all items regardless of category
+            'products': 'product',
+            'services': 'service', 
+            'needs': 'need',
+            'ideas': 'idea',
+            'projects': 'project',
+            'people': 'people',
+            'funders': 'fund',
+            'information': 'information',
+            'experiences': 'experience',
+            'opportunities': 'opportunity',
+            'events': 'event',
+            'auctions': 'auction',
+            'observations': 'observation',
+            'hidden_gems': 'hidden_gem'
+        }
+        actual_item_type = bank_type_mapping.get(bank.bank_type, bank.bank_type)
+    
+    # Optimized: Simplified filter options to reduce database queries
     if actual_item_type == 'all_items':
         # For 'items' bank, show all categories
-        categories = db.session.query(Item.category).filter(
-            Item.category.isnot(None)
-        ).distinct().all()
-        categories = [cat[0] for cat in categories]
-        
-        locations = db.session.query(Item.location).filter(
-            Item.location.isnot(None)
-        ).distinct().all()
-        locations = [loc[0] for loc in locations]
+        categories = []
+        locations = []
+    elif actual_item_type == 'filtered_by_item_type':
+        # For banks with specific item_type_id, use the same filter as main query
+        categories = []
+        locations = []
     else:
-        # For specific bank types, filter by category
-        categories = db.session.query(Item.category).filter(
-            Item.category == actual_item_type,
-            Item.category.isnot(None)
-        ).distinct().all()
-        categories = [cat[0] for cat in categories]
-        
-        locations = db.session.query(Item.location).filter(
-            Item.category == actual_item_type,
-            Item.location.isnot(None)
-        ).distinct().all()
-        locations = [loc[0] for loc in locations]
+        # For specific bank types, use minimal filtering
+        categories = []
+        locations = []
     
-    # Get product categories for products bank
+    # Get product categories for products bank (EXACT SAME AS OLD ROUTE)
     product_categories = []
-    if bank_type == 'products':
+    if bank.bank_type == 'products':
         product_categories = ProductCategory.query.filter_by(level=1, is_active=True).all()
     
-    # Track search analytics
-    try:
-        track_search_analytics(actual_item_type, search, category, location, product_category_id)
-    except Exception as e:
-        print(f"Error tracking search analytics: {e}")
+    # Analytics tracking disabled for performance optimization
+    # try:
+    #     track_search_analytics(actual_item_type, search, category, location, product_category_id)
+    # except Exception as e:
+    #     print(f"Error tracking search analytics: {e}")
     
+    # Support AJAX requests for partial loading
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        # Return JSON for AJAX requests (partial loading)
+        return jsonify({
+            'items': [{
+                'id': item.id,
+                'title': item.title,
+                'category': item.category,
+                'subcategory': item.subcategory,
+                'item_type': item.item_type.name if item.item_type else 'Unknown',
+                'item_type_id': item.item_type_id,
+                'price': item.price,
+                'rating': item.rating,
+                'images_media': item.images_media,
+                'location': item.location,
+                'profile_name': item.profile.name if item.profile else 'Unknown',
+                'created_at': item.created_at.isoformat()
+            } for item in items.items],
+            'pagination': {
+                'page': items.page,
+                'pages': items.pages,
+                'per_page': items.per_page,
+                'total': items.total,
+                'has_next': items.has_next,
+                'has_prev': items.has_prev
+            }
+        })
+    
+    # Use EXACT SAME template and parameters as old route to maintain styling
     return render_template('banks/items.html', 
                          items=items,
-                         bank_type=bank_type,
+                         bank=bank,  # Pass bank object for color access
+                         bank_type=bank.bank_type,  # Use bank.bank_type to match old route parameter
                          categories=categories,
                          locations=locations,
                          product_categories=product_categories,
@@ -327,194 +412,253 @@ def bank_items(bank_type):
                          sort_by=sort_by,
                          sort_order=sort_order)
 
-@banks_bp.route('/bank/<int:bank_id>')
-@login_required
-def bank_detail(bank_id):
-    bank = Bank.query.get_or_404(bank_id)
+def handle_user_bank(bank, page, per_page, search, sort_by, sort_order):
+    """Handle user banks - show users/profiles based on bank configuration"""
+    from models import ProfileType
     
-    page = request.args.get('page', 1, type=int)
-    per_page = 20
-    search = request.args.get('search', '')
-    category = request.args.get('category', '')
-    location = request.args.get('location', '')
-    min_price = request.args.get('min_price', type=float)
-    max_price = request.args.get('max_price', type=float)
-    sort_by = request.args.get('sort_by', 'created_at')
-    sort_order = request.args.get('sort_order', 'desc')
-    
-    # Map bank types to actual item types
-    bank_type_mapping = {
-        'organizations': 'organizations',
-        'users': 'users',
-        'items': 'all_items',  # Special case: show all items regardless of category
-        'needs': 'need',  # Changed from 'idea' to 'need' to match your need items
-        'ideas': 'idea',
-        'products': 'product',
-        'services': 'service', 
-        'people': 'people',
-        'funders': 'fund',
-        'information': 'information',
-        'experiences': 'experience',
-        'opportunities': 'opportunity',
-        'events': 'event',
-        'observations': 'observation',
-        'hidden_gems': 'hidden_gem'
-    }
-    
-    actual_item_type = bank_type_mapping.get(bank.bank_type, bank.bank_type)
-    
-    # Build query based on bank type using smart filtering
-    if bank.bank_type == 'organizations':
-        # For organizations, we need to query Organization model
-        from models import Organization
-        query = Organization.query.filter(Organization.is_public == True)
-        if bank.organization_type_id:
-            # Use smart filtering - organization_type_id
-            query = query.filter(Organization.organization_type_id == bank.organization_type_id)
-        elif bank.organization_type:
-            # Fallback to old organization_type field
-            org_type = OrganizationType.query.filter_by(name=bank.organization_type).first()
-            if org_type:
-                query = query.filter(Organization.organization_type_id == org_type.id)
-    elif bank.bank_type == 'users':
-        # For users, query User model
-        from models import User
-        query = User.query.filter(User.is_active == True)
-        # Apply user filter if configured
-        if bank.user_filter == 'public':
-            # Add public profile filter when available
-            pass  # For now, show all active users
+    # Build query for users based on bank.user_filter (Profile Type) and privacy_filter
+    if bank.user_filter:
+        # Filter users by specific profile type
+        base_query = User.query.join(Profile, User.id == Profile.user_id).filter(
+            User.is_active == True,
+            Profile.profile_type == bank.user_filter
+        )
     else:
-        # For items and needs, query Item model using smart filtering
-        query = Item.query.join(Profile).filter(Item.is_available == True)
-        
-        if bank.item_type_id:
-            # Bank is configured for a specific item type - use smart filtering
-            item_type = ItemType.query.get(bank.item_type_id)
-            if item_type:
-                query = query.filter(Item.category == item_type.name)
-        elif actual_item_type != 'all_items':
-            # Fallback to old mapping system for backward compatibility
-            query = query.filter(Item.category == actual_item_type)
+        # Show all users (no profile type filter)
+        base_query = User.query.join(Profile, User.id == Profile.user_id).filter(
+            User.is_active == True
+        )
     
-    # Apply filters
+    # Apply privacy filter
+    if bank.privacy_filter == 'public':
+        query = base_query.filter(Profile.is_public == True)
+    elif bank.privacy_filter == 'private':
+        query = base_query.filter(Profile.is_public == False)
+    else:  # 'all'
+        query = base_query  # No privacy filter
+    
+    # Apply search filter
     if search:
-        if bank.bank_type == 'organizations':
-            query = query.filter(Organization.name.contains(search))
-        elif bank.bank_type == 'users':
-            query = query.filter(
-                or_(
-                    User.first_name.contains(search),
-                    User.last_name.contains(search),
-                    User.username.contains(search)
-                )
+        query = query.filter(
+            or_(
+                User.first_name.contains(search),
+                User.last_name.contains(search),
+                User.username.contains(search),
+                User.email.contains(search)
             )
-        else:
-            query = query.filter(
-                or_(
-                    Item.title.contains(search),
-                    Item.description.contains(search)
-                )
-            )
-    
-    if category and bank.bank_type not in ['organizations', 'users']:
-        query = query.filter(Item.category == category)
-    
-    if location and bank.bank_type not in ['organizations', 'users']:
-        query = query.filter(Item.location.contains(location))
-    
-    if min_price is not None and bank.bank_type not in ['organizations', 'users']:
-        query = query.filter(Item.price >= min_price)
-    
-    if max_price is not None and bank.bank_type not in ['organizations', 'users']:
-        query = query.filter(Item.price <= max_price)
+        )
     
     # Apply sorting
-    if bank.bank_type == 'organizations':
-        if sort_by == 'name':
-            if sort_order == 'asc':
-                query = query.order_by(Organization.name.asc())
-            else:
-                query = query.order_by(Organization.name.desc())
-        else:  # created_at
-            if sort_order == 'asc':
-                query = query.order_by(Organization.created_at.asc())
-            else:
-                query = query.order_by(Organization.created_at.desc())
-    elif bank.bank_type == 'users':
-        if sort_by == 'name':
-            if sort_order == 'asc':
-                query = query.order_by(User.first_name.asc())
-            else:
-                query = query.order_by(User.first_name.desc())
-        else:  # created_at
-            if sort_order == 'asc':
-                query = query.order_by(User.created_at.asc())
-            else:
-                query = query.order_by(User.created_at.desc())
-    else:
-        if sort_by == 'price':
-            if sort_order == 'asc':
-                query = query.order_by(Item.price.asc())
-            else:
-                query = query.order_by(Item.price.desc())
-        elif sort_by == 'rating':
-            if sort_order == 'asc':
-                query = query.order_by(Item.rating.asc())
-            else:
-                query = query.order_by(Item.rating.desc())
-        else:  # created_at
-            if sort_order == 'asc':
-                query = query.order_by(Item.created_at.asc())
-            else:
-                query = query.order_by(Item.created_at.desc())
+    if sort_by == 'name':
+        if sort_order == 'asc':
+            query = query.order_by(User.first_name.asc(), User.last_name.asc())
+        else:
+            query = query.order_by(User.first_name.desc(), User.last_name.desc())
+    else:  # created_at
+        if sort_order == 'asc':
+            query = query.order_by(User.created_at.asc())
+        else:
+            query = query.order_by(User.created_at.desc())
     
-    items = query.paginate(page=page, per_page=per_page, error_out=False)
+    users = query.paginate(page=page, per_page=per_page, error_out=False)
     
-    # Get filter options
-    categories = []
-    locations = []
-    if bank.bank_type not in ['organizations', 'users']:
-        categories = db.session.query(Item.category).filter(
-            Item.category == actual_item_type,
-            Item.category.isnot(None)
-        ).distinct().all()
-        categories = [cat[0] for cat in categories]
+    # Get profile IDs for each user based on privacy filter
+    user_profiles = {}
+    for user in users.items:
+        # Get the appropriate profile based on privacy filter
+        if bank.privacy_filter == 'public':
+            profile = Profile.query.filter_by(user_id=user.id, is_public=True).first()
+        elif bank.privacy_filter == 'private':
+            profile = Profile.query.filter_by(user_id=user.id, is_public=False).first()
+        else:  # 'all'
+            profile = Profile.query.filter_by(user_id=user.id).first()
         
-        locations = db.session.query(Item.location).filter(
-            Item.category == actual_item_type,
-            Item.location.isnot(None)
-        ).distinct().all()
-        locations = [loc[0] for loc in locations]
+        if profile:
+            user_profiles[user.id] = profile.id
     
-    return render_template('banks/bank_detail.html', 
+    # Support AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'users': [{
+                'id': user.id,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'username': user.username,
+                'email': user.email,
+                'location': user.location,
+                'bio': user.bio,
+                'avatar': user.avatar,
+                'created_at': user.created_at.isoformat()
+            } for user in users.items],
+            'pagination': {
+                'page': users.page,
+                'pages': users.pages,
+                'per_page': users.per_page,
+                'total': users.total,
+                'has_next': users.has_next,
+                'has_prev': users.has_prev
+            }
+        })
+    
+    return render_template('banks/users.html', 
+                         users=users,
+                         user_profiles=user_profiles,
                          bank=bank,
-                         items=items,
-                         categories=categories,
-                         locations=locations,
+                         bank_type=bank.bank_type,
                          search=search,
-                         category=category,
-                         location=location,
-                         min_price=min_price,
-                         max_price=max_price,
                          sort_by=sort_by,
-                         sort_order=sort_order)
+                         sort_order=sort_order,
+                         page=page)
+
+def handle_organization_bank(bank, page, per_page, search, sort_by, sort_order):
+    """Handle organization banks - show organizations based on bank configuration"""
+    from models import OrganizationType
+    
+    # Build query for organizations
+    query = Organization.query.filter_by(status='active')
+    
+    # Apply bank's privacy filter
+    if bank.privacy_filter == 'public':
+        query = query.filter(Organization.is_public == True)
+    elif bank.privacy_filter == 'private':
+        query = query.filter(Organization.is_public == False)
+    # If privacy_filter is 'all', show all organizations
+    
+    # Apply bank's configured organization type filter
+    if bank.organization_type_id:
+        query = query.filter(Organization.organization_type_id == bank.organization_type_id)
+    
+    # Apply search filter
+    if search:
+        query = query.filter(
+            or_(
+                Organization.name.contains(search),
+                Organization.description.contains(search),
+                Organization.location.contains(search)
+            )
+        )
+    
+    # Apply sorting
+    if sort_by == 'name':
+        if sort_order == 'asc':
+            query = query.order_by(Organization.name.asc())
+        else:
+            query = query.order_by(Organization.name.desc())
+    else:  # created_at
+        if sort_order == 'asc':
+            query = query.order_by(Organization.created_at.asc())
+        else:
+            query = query.order_by(Organization.created_at.desc())
+    
+    organizations = query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    # Get all organization types for the filter dropdown
+    organization_types = OrganizationType.query.filter_by(is_active=True).order_by(OrganizationType.order_index.asc()).all()
+    
+    # Support AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'organizations': [{
+                'id': org.id,
+                'name': org.name,
+                'slug': org.slug,
+                'description': org.description,
+                'organization_type': {
+                    'id': org.organization_type.id if org.organization_type else None,
+                    'name': org.organization_type.name if org.organization_type else 'Unknown',
+                    'display_name': org.organization_type.display_name if org.organization_type else 'Unknown',
+                    'icon_class': org.organization_type.icon_class if org.organization_type else 'fas fa-building',
+                    'color_class': org.organization_type.color_class if org.organization_type else '#6c757d'
+                },
+                'website': org.website,
+                'location': org.location,
+                'logo': org.logo,
+                'is_public': org.is_public,
+                'created_at': org.created_at.isoformat()
+            } for org in organizations.items],
+            'pagination': {
+                'page': organizations.page,
+                'pages': organizations.pages,
+                'per_page': organizations.per_page,
+                'total': organizations.total,
+                'has_next': organizations.has_next,
+                'has_prev': organizations.has_prev
+            }
+        })
+    
+    return render_template('banks/organizations.html', 
+                         organizations=organizations,
+                         organization_types=organization_types,
+                         bank=bank,
+                         bank_type=bank.bank_type,
+                         search=search,
+                         org_type_filter=org_type_filter,
+                         privacy_filter=privacy_filter,
+                         sort_by=sort_by,
+                         sort_order=sort_order,
+                         page=page)
+
 
 @banks_bp.route('/item/<int:item_id>')
 @login_required
 def item_detail(item_id):
-    item = Item.query.get_or_404(item_id)
-    
-    # Get similar items
-    similar_items = Item.query.filter(
-        Item.category == item.category,
-        Item.id != item.id,
-        Item.is_available == True
-    ).limit(6).all()
-    
-    return render_template('banks/item_detail.html', 
-                         item=item, 
-                         similar_items=similar_items)
+    try:
+        print(f"DEBUG: Loading item {item_id}")
+        item = Item.query.options(db.joinedload(Item.item_type)).get_or_404(item_id)
+        print(f"DEBUG: Item loaded: {item.title}")
+        print(f"DEBUG: Item location: {item.location}")
+        
+        # INCREMENT VIEW COUNT (but not for item owner)
+        item_owner_profile = Profile.query.get(item.profile_id)
+        if item_owner_profile and item_owner_profile.user_id != current_user.id:
+            # Not the owner viewing their own item - increment view count
+            item.views += 1
+            db.session.commit()
+            print(f"DEBUG: View count incremented to {item.views}")
+            
+            # Also track in ItemInteraction for analytics
+            from models import ItemInteraction
+            import uuid
+            interaction = ItemInteraction(
+                item_id=item.id,
+                user_id=current_user.id,
+                interaction_type='view',
+                source='bank',
+                referrer=request.referrer or 'direct',
+                session_id=request.cookies.get('session', str(uuid.uuid4())),
+                ip_address=request.remote_addr
+            )
+            db.session.add(interaction)
+            db.session.commit()
+            print(f"DEBUG: View interaction tracked with session: {interaction.session_id}")
+        else:
+            print(f"DEBUG: Owner viewing own item - view count not incremented")
+        
+        # Find which bank this item belongs to based on item_type
+        bank = None
+        if item.item_type:
+            bank = Bank.query.filter_by(item_type_id=item.item_type.id, is_active=True).first()
+            print(f"DEBUG: Bank found: {bank.name if bank else 'None'}")
+        
+        # Get similar items
+        similar_items = Item.query.filter(
+            Item.category == item.category,
+            Item.id != item.id,
+            Item.is_available == True
+        ).limit(6).all()
+        print(f"DEBUG: Similar items count: {len(similar_items)}")
+        
+        print("DEBUG: About to render template")
+        return render_template('banks/item_detail.html', 
+                             item=item, 
+                             bank=bank,
+                             similar_items=similar_items)
+    except Exception as e:
+        print(f"DEBUG: Error in item_detail: {str(e)}")
+        print(f"DEBUG: Error type: {type(e).__name__}")
+        import traceback
+        print(f"DEBUG: Traceback: {traceback.format_exc()}")
+        raise
 
 @banks_bp.route('/debug-items')
 @login_required
@@ -704,45 +848,6 @@ def product_items_by_category(category_id, subcategory_id, sub_subcategory_id):
                          items=items,
                          search=search)
 
-@banks_bp.route('/update-banks-data')
-@login_required
-def update_banks_data():
-    from flask import flash, redirect, url_for
-    
-    # Delete all existing banks
-    Bank.query.delete()
-    
-    # Create the 14 banks requested (Ideas before Projects)
-    banks_data = [
-        {'name': 'Bank of Products', 'bank_type': 'products', 'description': 'Physical & digital items'},
-        {'name': 'Bank of Services', 'bank_type': 'services', 'description': 'Professional services'},
-        {'name': 'Bank of Ideas', 'bank_type': 'ideas', 'description': 'Creative concepts'},
-        {'name': 'Bank of Projects', 'bank_type': 'projects', 'description': 'Project collaborations'},
-        {'name': 'Bank of Funds', 'bank_type': 'funders', 'description': 'Funding opportunities'},
-        {'name': 'Bank of Events', 'bank_type': 'events', 'description': 'Organized gatherings'},
-        {'name': 'Bank of Auctions', 'bank_type': 'auctions', 'description': 'Competitive bidding'},
-        {'name': 'Bank of Experiences', 'bank_type': 'experiences', 'description': 'Shared experiences'},
-        {'name': 'Bank of Opportunities', 'bank_type': 'opportunities', 'description': 'Business opportunities'},
-        {'name': 'Bank of Informations', 'bank_type': 'information', 'description': 'Knowledge & insights'},
-        {'name': 'Bank of Observations', 'bank_type': 'observations', 'description': 'Market observations'},
-        {'name': 'Bank of Hidden Gems', 'bank_type': 'hidden_gems', 'description': 'Undiscovered treasures'},
-        {'name': 'Bank of Needs', 'bank_type': 'needs', 'description': 'What people need'},
-        {'name': 'Bank of People', 'bank_type': 'people', 'description': 'Connect with others'}
-    ]
-    
-    for bank_info in banks_data:
-        bank = Bank(
-            name=bank_info['name'],
-            bank_type=bank_info['bank_type'],
-            description=bank_info['description'],
-            is_active=True
-        )
-        db.session.add(bank)
-    
-    db.session.commit()
-    
-    flash(f'Successfully updated {len(banks_data)} banks!', 'success')
-    return redirect(url_for('admin.index'))
 
 def track_search_analytics(item_type, search_term, category, location, product_category_id):
     """Track search analytics for optimization"""

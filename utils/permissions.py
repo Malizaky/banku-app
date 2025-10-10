@@ -20,22 +20,33 @@ def has_permission(user, resource, action):
     Returns:
         bool: True if user has permission, False otherwise
     """
-    if not user or not user.is_authenticated:
-        return False
-    
-    # Super admin bypass (if user has Admin role)
-    admin_role = next((role.name for role in user.roles if role.name == 'Admin'), None)
-    if admin_role:
-        return True
-    
-    # Check user's roles for the required permission
-    for user_role in user.roles:
-        role = user_role.role if hasattr(user_role, 'role') else user_role
-        if role.permissions and resource in role.permissions:
-            if action in role.permissions[resource]:
+    try:
+        if not user or not user.is_authenticated:
+            return False
+        
+        # Super admin bypass (if user has Admin role)
+        try:
+            admin_role = next((role.name for role in user.roles if role.name == 'Admin'), None)
+            if admin_role:
                 return True
-    
-    return False
+        except Exception as e:
+            current_app.logger.warning(f"Error checking admin role: {e}")
+        
+        # Check user's roles for the required permission
+        try:
+            for user_role in user.roles:
+                role = user_role.role if hasattr(user_role, 'role') else user_role
+                if role.permissions and resource in role.permissions:
+                    if action in role.permissions[resource]:
+                        return True
+        except Exception as e:
+            current_app.logger.error(f"Error checking user permissions: {e}")
+            return False
+        
+        return False
+    except Exception as e:
+        current_app.logger.error(f"Permission check failed: {e}")
+        return False
 
 def has_any_permission(user, resource, actions):
     """
@@ -118,7 +129,8 @@ def require_permission(resource, action, redirect_url=None, json_response=False)
                         return redirect(redirect_url)
                     else:
                         flash(user_friendly_message, 'error')
-                        return redirect(url_for('dashboard.index'))
+                        # Return to previous page instead of dashboard
+                        return redirect(request.referrer or url_for('index'))
             
             return f(*args, **kwargs)
         return decorated_function
@@ -144,7 +156,8 @@ def require_any_permission(resource, actions, redirect_url=None, json_response=F
                         return redirect(redirect_url)
                     else:
                         flash('Access denied. Insufficient permissions.', 'error')
-                        return redirect(url_for('dashboard.index'))
+                        # Return to previous page instead of dashboard
+                        return redirect(request.referrer or url_for('index'))
             
             return f(*args, **kwargs)
         return decorated_function
@@ -170,7 +183,8 @@ def require_all_permissions(resource, actions, redirect_url=None, json_response=
                         return redirect(redirect_url)
                     else:
                         flash('Access denied. Insufficient permissions.', 'error')
-                        return redirect(url_for('dashboard.index'))
+                        # Return to previous page instead of dashboard
+                        return redirect(request.referrer or url_for('index'))
             
             return f(*args, **kwargs)
         return decorated_function
@@ -201,41 +215,48 @@ def require_permission(resource, action):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if not current_user.is_authenticated:
-                flash('Authentication required.', 'error')
-                return redirect(url_for('auth.login'))
-            
-            if not has_permission(current_user, resource, action):
-                # User-friendly error messages
-                error_messages = {
-                    ('deals', 'create'): 'You need permission to create deals. Please contact customer support.',
-                    ('deals', 'read'): 'You need permission to view deals. Please contact customer support.',
-                    ('deals', 'update'): 'You need permission to update deals. Please contact customer support.',
-                    ('deals', 'delete'): 'You need permission to delete deals. Please contact customer support.',
-                    ('banks', 'create'): 'You need permission to create banks. Please contact customer support.',
-                    ('banks', 'read'): 'You need permission to view banks. Please contact customer support.',
-                    ('organizations', 'create'): 'You need permission to create organizations. Please contact customer support.',
-                    ('organizations', 'read'): 'You need permission to view organizations. Please contact customer support.',
-                    ('organizations', 'update'): 'You need permission to modify organizations. Please contact customer support.',
-                    ('organizations', 'delete'): 'You need permission to delete organizations. Please contact customer support.',
-                    ('ai_matching', 'access_dashboard'): 'You need permission to access AI Matcher. Please contact customer support.',
-                    ('profiles', 'create'): 'You need permission to create profiles. Please contact customer support.',
-                    ('profiles', 'read'): 'You need permission to view profiles. Please contact customer support.',
-                    ('profiles', 'update'): 'You need permission to modify profiles. Please contact customer support.',
-                    ('profiles', 'delete'): 'You need permission to delete profiles. Please contact customer support.',
-                    ('items', 'create'): 'You need permission to create items. Please contact customer support.',
-                    ('items', 'read'): 'You need permission to view items. Please contact customer support.',
-                    ('items', 'update'): 'You need permission to modify items. Please contact customer support.',
-                    ('items', 'delete'): 'You need permission to delete items. Please contact customer support.',
-                    ('chatbots', 'read'): 'You need permission to use chatbots. Please contact customer support.',
-                    ('admin', 'access'): 'You need admin permissions to access this area. Please contact customer support.'
-                }
+            try:
+                if not current_user.is_authenticated:
+                    flash('Authentication required.', 'error')
+                    return redirect(url_for('auth.login'))
                 
-                error_message = error_messages.get((resource, action), f'You need permission to access this feature. Please contact customer support.')
-                flash(error_message, 'error')
-                return redirect(url_for('dashboard.index'))
-            
-            return f(*args, **kwargs)
+                if not has_permission(current_user, resource, action):
+                    # User-friendly error messages
+                    error_messages = {
+                        ('deals', 'create'): 'You need permission to create deals. Please contact customer support.',
+                        ('deals', 'read'): 'You need permission to view deals. Please contact customer support.',
+                        ('deals', 'update'): 'You need permission to update deals. Please contact customer support.',
+                        ('deals', 'delete'): 'You need permission to delete deals. Please contact customer support.',
+                        ('banks', 'create'): 'You need permission to create banks. Please contact customer support.',
+                        ('banks', 'read'): 'You need permission to view banks. Please contact customer support.',
+                        ('organizations', 'create'): 'You need permission to create organizations. Please contact customer support.',
+                        ('organizations', 'read'): 'You need permission to view organizations. Please contact customer support.',
+                        ('organizations', 'update'): 'You need permission to modify organizations. Please contact customer support.',
+                        ('organizations', 'delete'): 'You need permission to delete organizations. Please contact customer support.',
+                        ('ai_matching', 'access_dashboard'): 'You need permission to access AI Matcher. Please contact customer support.',
+                        ('profiles', 'create'): 'You need permission to create profiles. Please contact customer support.',
+                        ('profiles', 'read'): 'You need permission to view profiles. Please contact customer support.',
+                        ('profiles', 'update'): 'You need permission to modify profiles. Please contact customer support.',
+                        ('profiles', 'delete'): 'You need permission to delete profiles. Please contact customer support.',
+                        ('items', 'create'): 'You need permission to create items. Please contact customer support.',
+                        ('items', 'read'): 'You need permission to view items. Please contact customer support.',
+                        ('items', 'update'): 'You need permission to modify items. Please contact customer support.',
+                        ('items', 'delete'): 'You need permission to delete items. Please contact customer support.',
+                        ('chatbots', 'read'): 'You need permission to use chatbots. Please contact customer support.',
+                        ('admin', 'access'): 'You need admin permissions to access this area. Please contact customer support.'
+                    }
+                    
+                    error_message = error_messages.get((resource, action), f'You need permission to access this feature. Please contact customer support.')
+                    flash(error_message, 'error')
+                    # Return to previous page instead of dashboard
+                    return redirect(request.referrer or url_for('index'))
+                
+                return f(*args, **kwargs)
+            except Exception as e:
+                current_app.logger.error(f"Permission decorator error: {e}")
+                flash('An error occurred while checking permissions. Please try again.', 'error')
+                # Return to previous page instead of dashboard
+                return redirect(request.referrer or url_for('index'))
         return decorated_function
     return decorator
 
@@ -253,7 +274,7 @@ def require_admin_or_connector(f=None):
             
             if not (any(role.name == 'Admin' for role in current_user.roles) or any(role.name == 'Connector' for role in current_user.roles)):
                 flash('Admin or Connector access required.', 'error')
-                return redirect(url_for('dashboard.index'))
+                return redirect(request.referrer or url_for('index'))
             
             return func(*args, **kwargs)
         return decorated_function
@@ -278,7 +299,7 @@ def internal_staff_required(f):
         internal_roles = ['Admin', 'Connector', 'Collector', 'Verifier', 'Content Manager', 'Data Analyst', 'System Administrator']
         if not any(any(user_role.name == role for user_role in current_user.roles) for role in internal_roles):
             flash('Internal staff access required.', 'error')
-            return redirect(url_for('dashboard.index'))
+            return redirect(request.referrer or url_for('index'))
         
         return f(*args, **kwargs)
     return decorated_function
